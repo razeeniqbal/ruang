@@ -1,7 +1,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'..');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-const target=path.join(root,'release','Ruang-'+pkg.version.split('.').slice(0,2).join('.'));
+const target=path.join(root,'release','Ruang-'+pkg.version);
 if(fs.existsSync(target))throw Error('Release already exists. Choose a new release folder before packaging again.');
 fs.mkdirSync(target,{recursive:true});
 fs.cpSync(path.join(root,'node_modules','electron','dist'),target,{recursive:true});

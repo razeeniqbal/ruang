@@ -22,7 +22,8 @@
   block(41,5,1,2);
 
   // Open-plan workstations. Monitors facing away from the camera mean the seat is on the near side.
-  desk('manager',3,10,4,2,'Manager desk',[seat(4,9,'down',-.05,.1)]);
+  // The art has no chair behind this desk, so the manager uses the pictured chair in front of it like everyone else.
+  desk('manager',3,10,4,2,'Manager desk',[seat(4,12,'up',-.05)]);
   desk('research',9,10,3,2,'Research workstation',[seat(10,12,'up',-.35)]);
   desk('analysis',12,10,2,2,'Analysis workstation',[seat(12,12,'up')]);
   desk('developer',15,10,3,2,'Development workstation',[seat(16,12,'up',-.05)]);
