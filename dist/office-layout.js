@@ -1,48 +1,64 @@
 (function(root){
-  // Zone materials follow the V2 reference: carpet for work, deeper carpet for meetings, tile for pantry, sage rug for lounge; corridors stay oak.
-  const layout={version:5,width:48,height:32,tile:16,zones:[
-    {x:2,y:4,w:13,h:9,material:'carpet'},{x:32,y:4,w:13,h:9,material:'carpet'},
-    {x:2,y:17,w:13,h:9,material:'carpet'},{x:32,y:17,w:13,h:9,material:'carpet'},
-    {x:18,y:4,w:12,h:9,material:'carpetDeep'},{x:18,y:18,w:12,h:8,material:'carpet'},
-    {x:17,y:26,w:14,h:5,material:'sageRug'},{x:2,y:27,w:13,h:4,material:'tile'},{x:32,y:27,w:13,h:4,material:'floor'}
-  ],objects:[],spawns:[{x:23,y:15},{x:12,y:14},{x:35,y:14},{x:12,y:27},{x:35,y:27}]};
-  function add(id,asset,x,y,w=1,h=1,options={}){layout.objects.push({id,asset,x,y,width:w,height:h,collision:true,...options})}
-  function station(id,x,y,monitor,role){add(id,'desk',x,y,2,1,{name:role+' workstation',kind:'work',role,actions:['work'],capacity:1,slots:[{x:x+1,y:y+2}],visualOffsetY:0});add(id+'-screen',monitor,x,y-1,1,1,{collision:false});add(id+'-chair','chair',x+1,y+1,1,1,{collision:false})}
-  station('research',5,8,'researchMonitor','Research');station('analysis',36,8,'chartMonitor','Analysis');station('developer',5,21,'codeMonitor','Development');station('qa',36,21,'checkMonitor','QA');station('ai',24,21,'aiMonitor','AI');station('manager',20,21,'monitor','Planning');
-  station('pair',10,21,'codeMonitor','Pair programming');layout.objects.find(o=>o.id==='pair').kind='collaboration';layout.objects.find(o=>o.id==='pair').capacity=2;layout.objects.find(o=>o.id==='pair').slots=[{x:10,y:23},{x:11,y:23}];
-  add('meeting','meeting',23,8,2,2,{name:'Meeting table',kind:'collaboration',actions:['discuss'],capacity:6,slots:[{x:22,y:8},{x:22,y:9},{x:25,y:8},{x:25,y:9},{x:23,y:10},{x:24,y:10}]});
-  for(const [i,x,y] of [[0,22,8],[1,22,9],[2,25,8],[3,25,9],[4,23,10],[5,24,10]])add('meeting-chair-'+i,'chair',x,y,1,1,{collision:false});
-  add('whiteboard','whiteboard',20,4,2,2,{name:'Whiteboard',kind:'planning',actions:['plan','present'],capacity:3,slots:[{x:19,y:6},{x:20,y:6},{x:21,y:6}]});
-  add('projectboard','projectboard',26,4,2,2,{name:'Project board',kind:'planning',actions:['plan','review'],capacity:3,slots:[{x:25,y:6},{x:26,y:6},{x:27,y:6}]});
-  add('discussion','discussion',39,28,2,2,{name:'Discussion table',kind:'collaboration',actions:['discuss'],capacity:2,slots:[{x:38,y:29},{x:41,y:29}]});
-  add('bookshelf','shelf',3,4,1,2,{name:'Research bookshelf',kind:'research',actions:['read'],capacity:1,slots:[{x:3,y:6}]});
-  add('documents','cabinet',7,4,1,2,{name:'Document cabinet',kind:'research',actions:['read'],capacity:1,slots:[{x:7,y:6}]});
-  add('research-terminal','researchMonitor',11,6,1,1,{name:'Research terminal',kind:'research',actions:['research'],capacity:1,slots:[{x:11,y:7}]});
-  add('qa-board','projectboard',40,17,2,2,{name:'Review checklist',kind:'review',actions:['review'],capacity:1,slots:[{x:40,y:19}]});
-  add('data-board','whiteboard',40,4,2,2,{name:'Data board',kind:'analysis',actions:['analyse'],capacity:1,slots:[{x:40,y:6}]});
-  add('printer','printer',4,28,1,1,{name:'Printer',kind:'utility',actions:['print'],capacity:1,slots:[{x:4,y:29}]});
-  add('coffee','coffee',8,27,1,2,{name:'Coffee machine',kind:'break',actions:['get_coffee'],capacity:1,slots:[{x:8,y:29}]});
-  add('water','water',11,27,1,2,{name:'Water dispenser',kind:'break',actions:['get_water'],capacity:1,slots:[{x:11,y:29}]});
-  add('server','server',43,10,1,2,{name:'Server rack',kind:'utility',actions:['inspect'],capacity:1,slots:[{x:42,y:11}]});
-  add('storage','cabinet',34,28,1,2,{name:'Storage cabinet',kind:'utility',actions:['organise'],capacity:1,slots:[{x:35,y:29}]});
-  add('sofa','sofa',21,27,2,1,{name:'Sofa',kind:'break',actions:['sit'],capacity:2,slots:[{x:21,y:28},{x:22,y:28}]});
-  add('armchair','armchair',26,27,1,1,{name:'Armchair',kind:'break',actions:['sit'],capacity:1,slots:[{x:26,y:28}]});
-  add('coffee-table','discussion',23,29,2,2,{name:'Coffee table',kind:'break',actions:['take_break'],capacity:2,slots:[{x:22,y:30},{x:25,y:30}]});
-  add('window-view','window',34,0,2,2,{name:'Window',kind:'break',actions:['look_outside'],capacity:1,slots:[{x:34,y:3}]});
-  for(const x of [4,12,21,28,41])add('window-'+x,'window',x,0,2,2,{collision:false});
-  add('cat','cat',29,28,1,1,{name:'Office cat',kind:'fun',actions:['pet_cat'],capacity:1,slots:[{x:29,y:29}]});
-  // Plants only at corners and the lounge edges, never crowding workstations.
-  for(const [i,x,y]of [[0,2,11],[3,44,4],[4,2,24],[7,44,17],[8,18,25],[9,29,25]])add('plant-'+i,'plant',x,y,1,1,{name:'Office plant',kind:'fun',actions:['water_plant'],capacity:1,slots:[{x,y:y+1}]});
-  // Extra workstations are capacity for future employees; empty desks are intentional.
-  for(const [id,x,y,monitor,role] of [
-    ['research-extra',10,8,'researchMonitor','Research'],['research-bench',4,11,'researchMonitor','Research'],
-    ['analysis-extra',33,8,'chartMonitor','Analysis'],['analysis-bench',41,8,'chartMonitor','Analysis'],
-    ['dev-extra',7,18,'codeMonitor','Development'],['dev-bench',11,18,'codeMonitor','Development'],
-    ['qa-extra',33,21,'checkMonitor','QA'],['qa-bench',41,21,'checkMonitor','QA'],['qa-terminal',36,18,'checkMonitor','QA'],
-    ['ai-extra',27,21,'aiMonitor','AI'],['ai-bench',24,24,'aiMonitor','AI']
-  ])station(id,x,y,monitor,role);
-  add('discussion-small','discussion',19,10,2,2,{name:'Small discussion table',kind:'collaboration',actions:['discuss'],capacity:2,slots:[{x:18,y:11},{x:21,y:11}]});
-  add('meeting-sofa','sofa',27,10,2,1,{name:'Meeting lounge',kind:'break',actions:['sit'],capacity:2,slots:[{x:27,y:11},{x:28,y:11}]});
+  // V2 office: the backdrop is design/v2 "Master Test Office Composition" (1536x1024) on a 48x32 grid of 32px cells.
+  // Furniture lives in the image, so objects here are invisible collision rectangles and interaction points.
+  // Slots may carry dx/dy (fraction of a cell) to sit exactly on a pictured chair, and face for the seated direction.
+  const layout={version:6,width:48,height:32,tile:32,background:'v2/office.png',zones:[],objects:[],spawns:[{x:19,y:28},{x:12,y:8},{x:21,y:21},{x:36,y:23},{x:40,y:10}]};
+  function add(id,x,y,w=1,h=1,options={}){layout.objects.push({id,x,y,width:w,height:h,collision:true,...options})}
+  let n=0;const block=(x,y,w,h)=>add('block-'+n++,x,y,w,h);
+  const seat=(x,y,face,dx=0,dy=0)=>({x,y,face,dx,dy});
+  function desk(id,x,y,w,h,name,slots,kind='work'){add(id,x,y,w,h,{name,kind,actions:['work'],capacity:slots.length,slots})}
+
+  // Shell: windows and back rooms along the top, outer walls, and the entrance gap at the bottom.
+  block(0,0,48,5);block(0,5,3,25);block(47,5,1,25);block(0,30,48,2);
+
+  // Upper lounge, window bar and pantry.
+  add('sofa',3,5,5,1,{name:'Lounge sofa',kind:'break',actions:['sit'],capacity:2,slots:[seat(4,6,'down',.1,-.35),seat(6,6,'down',.1,-.35)]});
+  add('armchair',8,5,3,1,{name:'Armchair',kind:'break',actions:['sit'],capacity:1,slots:[seat(9,6,'down',-.1,-.5)]});
+  block(5,7,3,1);block(8,7,2,1);block(22,5,1,1);
+  add('window-view',15,3,7,2,{name:'Window bar',kind:'break',actions:['look_outside'],capacity:3,collision:false,slots:[seat(16,5,'up',-.4,-.3),seat(17,5,'up',.4,-.3),seat(19,5,'up',.4,-.3)]});
+  add('coffee',25,3,2,2,{name:'Coffee machine',kind:'break',actions:['get_coffee'],capacity:1,slots:[seat(25,5,'up',.3)]});
+  add('water',28,3,1,3,{name:'Water dispenser',kind:'break',actions:['get_water'],capacity:1,slots:[seat(28,6,'up',.4)]});
+  add('snacks',29,5,3,1,{name:'Pantry fridge',kind:'break',actions:['get_coffee'],capacity:1,slots:[seat(30,6,'up')]});
+  block(41,5,1,2);
+
+  // Open-plan workstations. Monitors facing away from the camera mean the seat is on the near side.
+  desk('manager',3,10,4,2,'Manager desk',[seat(4,9,'down',-.05,.1)]);
+  desk('research',9,10,3,2,'Research workstation',[seat(10,12,'up',-.35)]);
+  desk('analysis',12,10,2,2,'Analysis workstation',[seat(12,12,'up')]);
+  desk('developer',15,10,3,2,'Development workstation',[seat(16,12,'up',-.05)]);
+  desk('qa',18,10,2,2,'QA workstation',[seat(18,12,'up',.15)]);
+  block(10,9,1,1);block(12,9,1,1);block(16,9,1,1);block(18,9,1,1);
+  desk('hotdesk',2,14,4,2,'Hot desk',[seat(4,16,'up',-.35)]);
+  desk('ai',10,15,4,2,'AI workstation',[seat(12,17,'up',-.4)]);block(9,16,1,2);
+  desk('pair',15,15,4,2,'Pair programming desk',[seat(17,17,'up',-.4),seat(15,17,'up',.5)],'collaboration');block(19,15,2,3);
+  block(6,13,2,4);block(9,20,7,3);
+
+  // Lower lounge, reception and entrance vestibule.
+  add('lounge',2,18,5,2,{name:'Lounge sofa (lower)',kind:'break',actions:['sit'],capacity:2,slots:[seat(3,20,'down',.1,-.6),seat(5,20,'down',.1,-.6)]});
+  block(3,21,2,2);block(6,20,1,2);
+  add('reception',4,25,7,2,{name:'Reception',kind:'utility',actions:['work'],capacity:1,slots:[seat(8,24,'down',-.45)]});
+  block(4,24,2,1);block(9,24,2,1);block(13,26,1,3);
+  block(14,24,1,6);block(15,24,3,3);block(21,24,3,3);block(15,26,2,2);block(22,26,2,2);block(24,24,1,6);block(25,26,1,3);
+
+  // Glass meeting room (door at x23-24, y15-16).
+  block(22,7,1,11);block(23,7,10,3);block(33,7,1,10);block(25,15,8,2);block(23,10,1,4);block(31,9,2,2);
+  add('projectboard',24,10,1,1,{name:'Meeting room whiteboard',kind:'planning',actions:['plan','review'],capacity:2,slots:[seat(24,11,'up'),seat(25,11,'up')]});
+  add('meeting',26,11,5,2,{name:'Meeting table',kind:'collaboration',actions:['discuss'],capacity:8,slots:[
+    seat(26,10,'down',.4),seat(28,10,'down',-.2),seat(29,10,'down',.2),seat(26,13,'up',.4,.3),seat(28,13,'up',-.2,.3),seat(29,13,'up',.2,.3),seat(25,12,'right',.3),seat(31,12,'left',-.15)]});
+
+  // Collaboration corner, bookshelf and the right-hand corridor to the lift.
+  block(34,7,5,3);block(37,9,2,2);block(37,12,2,3);block(35,14,2,1);block(39,7,1,16);block(34,18,1,3);
+  add('whiteboard',35,11,3,3,{name:'Whiteboard',kind:'planning',actions:['plan','present'],capacity:3,slots:[seat(34,12,'right'),seat(34,13,'right'),seat(34,14,'right')]});
+  add('bookshelf',35,16,4,5,{name:'Bookshelf',kind:'research',actions:['read'],capacity:2,slots:[seat(36,21,'up'),seat(37,21,'up')]});
+  block(42,5,6,9);block(42,14,1,1);block(46,16,1,2);block(40,18,8,5);
+
+  // Round table, focus booths, café corner.
+  add('discussion',28,18,2,3,{name:'Round table',kind:'collaboration',actions:['discuss'],capacity:4,slots:[seat(27,18,'right',-.25),seat(30,18,'left',.15),seat(27,20,'right',-.1),seat(30,20,'left',.1)]});
+  block(27,22,1,6);block(29,22,1,6);block(31,22,1,6);block(33,22,1,6);block(30,24,1,3);block(34,24,5,4);block(46,23,1,6);
+  add('booth-1',28,22,1,4,{name:'Focus booth',kind:'focus',actions:['work'],capacity:1,slots:[seat(28,26,'down',0,.2)]});
+  add('booth-2',32,22,1,4,{name:'Focus booth',kind:'focus',actions:['work'],capacity:1,slots:[seat(32,26,'down',0,.2)]});
+  add('cafe',42,24,2,3,{name:'Café table',kind:'break',actions:['take_break'],capacity:2,slots:[seat(40,25,'right',.4),seat(44,25,'left',-.1)]});
+
   layout.homeByAgent=['manager','research','analysis','developer','qa'];
   const api=layout;if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.OfficeLayout=api;
 })(typeof window!=='undefined'?window:globalThis);
