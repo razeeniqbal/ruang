@@ -32,17 +32,23 @@
   function makeBackground(){const img=new Image();img.src=layout.background;background=img}
   const CH=74,iconSize=22;// on-screen employee height and status glyph size, in backdrop pixels
   function seatOffset(a){return !a.path.length&&a.slot?{x:(a.slot.dx||0)*T,y:(a.slot.dy||0)*T}:{x:0,y:0}}
+  // Seated at a desk: only the upper body shows, lowered onto the seat, and the pictured chair back is redrawn in front.
+  const SIT_DROP=2,SEAT_GAP=6;
+  function figure(a){const off=seatOffset(a),x=a.x+off.x,foot=a.y+off.y,seated=!a.path.length&&!!a.slot?.sit;return {x,foot,seated,top:seated?foot+SIT_DROP-CH:foot-CH}}
   function drawHover(){const o=hovered?.object&&engine.objects.get(hovered.object);if(!o)return;ctx.strokeStyle='rgba(229,199,123,.9)';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.strokeRect(o.x*T+1,o.y*T+1,o.width*T-2,o.height*T-2);ctx.setLineDash([])}
   function actionFor(a){return a.path.length&&!paused?'walk':'idle'}
-  function drawAgent(a,i){const off=seatOffset(a),cx=Math.round(a.x+off.x),y=Math.round(a.y+off.y);if(i===chosen){ctx.fillStyle='rgba(229,199,123,.55)';ctx.beginPath();ctx.ellipse(cx,y-2,19,6,0,0,Math.PI*2);ctx.fill()}AgentSkins.draw(ctx,i,actionFor(a),a.direction,Math.floor(a.clock/150)%4,cx-8*CH/24,y,CH/24)}
+  function drawAgent(a,i){const f=figure(a),cx=Math.round(f.x),y=Math.round(f.foot),frame=Math.floor(a.clock/150)%4;if(i===chosen){ctx.fillStyle='rgba(229,199,123,.55)';ctx.beginPath();ctx.ellipse(cx,y-2,19,6,0,0,Math.PI*2);ctx.fill()}
+    if(!f.seated){AgentSkins.draw(ctx,i,actionFor(a),a.direction,frame,cx-8*CH/24,y,CH/24);return}
+    ctx.save();ctx.beginPath();ctx.rect(cx-40,y-CH-40,80,CH+40-SEAT_GAP);ctx.clip();AgentSkins.draw(ctx,i,'idle',a.direction,frame,cx-8*CH/24,y+SIT_DROP,CH/24);ctx.restore();
+    if(background?.complete)ctx.drawImage(background,cx-18,y-28,36,28-SEAT_GAP,cx-18,y-28,36,28-SEAT_GAP)}
   // Status icons are secondary: only meaningful states get one, at most MAX_ICONS on screen, highest priority first.
   // Walking, idle and ambient breaks (coffee, sofa, window) never show an icon.
   const MAX_ICONS=5,iconPriority={approval:0,thinking:1,waiting:1,done:2,team:3,research:3,working:4};
   function iconFor(a,i,now){if(i===0&&state.projects.some(p=>p.status==='Waiting approval'))return 'approval';if(wins.get(i)?.typing)return 'thinking';if(a.mode==='Waiting for a free station')return 'waiting';if(a.doneUntil>now)return 'done';const task=taskFor(i);if(!task||a.path.length||!a.objectId)return null;const kind=engine.objects.get(a.objectId)?.kind;return kind==='research'||task.kind==='research'?'research':kind==='collaboration'?'team':'working'}
-  function drawIcons(now){actors.map((a,i)=>({a,icon:iconFor(a,i,now)})).filter(s=>s.icon).sort((s,t)=>iconPriority[s.icon]-iconPriority[t.icon]).slice(0,MAX_ICONS).forEach(({a,icon})=>{const off=seatOffset(a),bob=icon==='approval'&&!paused&&Math.floor(now/400)%2?2:0;V2Sprites.icon(ctx,icon,a.x+off.x,a.y+off.y-CH-18-bob,iconSize)})}
+  function drawIcons(now){actors.map((a,i)=>({a,icon:iconFor(a,i,now)})).filter(s=>s.icon).sort((s,t)=>iconPriority[s.icon]-iconPriority[t.icon]).slice(0,MAX_ICONS).forEach(({a,icon})=>{const f=figure(a),bob=icon==='approval'&&!paused&&Math.floor(now/400)%2?2:0;V2Sprites.icon(ctx,icon,f.x,f.top-18-bob,iconSize)})}
   function draw(now){if(!canvas?.isConnected){raf=0;return}const dt=Math.min(now-last,50);last=now;update(dt,now);ctx.clearRect(0,0,W,H);if(background?.complete)ctx.drawImage(background,0,0,W,H);else{ctx.fillStyle='#101a24';ctx.fillRect(0,0,W,H)}drawHover();actors.map((a,i)=>({a,i})).sort((p,q)=>p.a.y-q.a.y).forEach(({a,i})=>drawAgent(a,i));drawIcons(now);drawLinks();positionWins();const dest=actors[chosen].path.at(-1);if(dest){ctx.strokeStyle='#e5c77b';ctx.lineWidth=2;const x=(dest.x+.5)*T,y=(dest.y+.75)*T;ctx.beginPath();ctx.ellipse(x,y-2,10,4,0,0,Math.PI*2);ctx.stroke()}if(now-lastPanel>500){updatePanel();lastPanel=now}raf=requestAnimationFrame(draw)}
   function point(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
-  function pick(p){const agent=actors.map((a,i)=>({a,i})).reverse().find(({a})=>{const off=seatOffset(a);return Math.abs(a.x+off.x-p.x)<20&&p.y>=a.y+off.y-CH-30&&p.y<=a.y+off.y+4});/* hit area includes the status icon, so clicking an approval icon opens that teammate */if(agent)return {agent:agent.i};const object=[...engine.interactions].reverse().find(o=>p.x>=o.x*T&&p.x<(o.x+o.width)*T&&p.y>=o.y*T&&p.y<(o.y+o.height)*T);return object?{object:object.id}:null}
+  function pick(p){const agent=actors.map((a,i)=>({a,i})).reverse().find(({a})=>{const f=figure(a);return Math.abs(f.x-p.x)<20&&p.y>=f.top-30&&p.y<=f.foot+4});/* hit area includes the status icon, so clicking an approval icon opens that teammate */if(agent)return {agent:agent.i};const object=[...engine.interactions].reverse().find(o=>p.x>=o.x*T&&p.x<(o.x+o.width)*T&&p.y>=o.y*T&&p.y<(o.y+o.height)*T);return object?{object:object.id}:null}
   // ---- Full-screen office with floating windows ----------------------------------------------
   // The office fills the screen. Everything else floats above it: teammate windows (anchored above the
   // teammate until dragged away, then linked by a dashed line) and the project board and activity panels.
@@ -92,12 +98,12 @@
   function positionWins(){if(!$('#office-windows')||!canvas)return;const b=box();
     for(const [k,w] of wins){const el=w.el;if(!el)continue;el.classList.toggle('sheet',narrow.matches);if(narrow.matches)continue;const ww=el.offsetWidth,wh=el.offsetHeight;let left,top,below=false;
       if(w.detached){if(w.x===null){w.x=k==='project'?b.w-ww-16:16;w.y=k==='project'?TOP_GAP:b.h-wh-BOTTOM_GAP}left=w.x;top=w.y}
-      else{const a=actors[k],off=seatOffset(a),sx=b.x+(a.x+off.x)*b.s;left=sx-ww/2;top=b.y+(a.y+off.y-CH-14)*b.s-wh-10;if(top<TOP_GAP){top=b.y+(a.y+off.y)*b.s+12;below=true}
+      else{const f=figure(actors[k]),sx=b.x+f.x*b.s;left=sx-ww/2;top=b.y+(f.top-14)*b.s-wh-10;if(top<TOP_GAP){top=b.y+f.foot*b.s+12;below=true}
         const clamped=Math.max(8,Math.min(left,b.w-ww-8));el.style.setProperty('--tail',Math.round(Math.min(Math.max(sx-clamped,14),ww-14))+'px')}
       left=Math.max(8,Math.min(left,b.w-ww-8));top=Math.max(TOP_GAP,Math.min(top,b.h-wh-BOTTOM_GAP));if(w.detached){w.x=left;w.y=top}
       el.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;el.classList.toggle('detached',w.detached);el.classList.toggle('below',below)}}
   function drawLinks(){if(!$('#office-windows'))return;const b=box();ctx.save();ctx.strokeStyle='rgba(229,199,123,.7)';ctx.lineWidth=2/b.s;ctx.setLineDash([6/b.s,5/b.s]);
-    for(const [k,w] of wins){if(!isAgent(k)||!w.el||!w.detached||narrow.matches)continue;const a=actors[k],off=seatOffset(a);ctx.beginPath();ctx.moveTo(a.x+off.x,a.y+off.y-CH);ctx.lineTo((w.x+w.el.offsetWidth/2-b.x)/b.s,(w.y+w.el.offsetHeight/2-b.y)/b.s);ctx.stroke()}ctx.restore()}
+    for(const [k,w] of wins){if(!isAgent(k)||!w.el||!w.detached||narrow.matches)continue;const f=figure(actors[k]);ctx.beginPath();ctx.moveTo(f.x,f.top);ctx.lineTo((w.x+w.el.offsetWidth/2-b.x)/b.s,(w.y+w.el.offsetHeight/2-b.y)/b.s);ctx.stroke()}ctx.restore()}
   function refreshChrome(){document.querySelectorAll('.dock-item').forEach(el=>{const i=Number(el.dataset.officeAgent),w=wins.get(i),alert=!!approvalFor(i)||!!w?.unread;el.classList.toggle('open',!!w&&!w.min);el.classList.toggle('minimised',!!w?.min);el.classList.toggle('alert',alert);el.setAttribute('aria-label',`${state.agents[i].name}${w?.min?', minimised':''}${alert?', needs attention':''}`)});
     for(const k of Object.keys(PANELS)){const b=document.querySelector(`[data-office="panel-${k}"]`),w=wins.get(k);b?.setAttribute('aria-pressed',String(!!w&&!w.min))}}
   function updatePanel(force=false){for(const k of wins.keys())refreshWin(k,force);refreshChrome()}

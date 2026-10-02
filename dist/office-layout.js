@@ -6,7 +6,9 @@
   function add(id,x,y,w=1,h=1,options={}){layout.objects.push({id,x,y,width:w,height:h,collision:true,...options})}
   let n=0;const block=(x,y,w,h)=>add('block-'+n++,x,y,w,h);
   const seat=(x,y,face,dx=0,dy=0)=>({x,y,face,dx,dy});
-  function desk(id,x,y,w,h,name,slots,kind='work'){add(id,x,y,w,h,{name,kind,actions:['work'],capacity:slots.length,slots})}
+  // Desk seats are sat in: the renderer shows the upper body and redraws the pictured chair back in front of it.
+  // dx/dy put the feet 6px below the bottom of each pictured chair back.
+  function desk(id,x,y,w,h,name,slots,kind='work'){add(id,x,y,w,h,{name,kind,actions:['work'],capacity:slots.length,slots:slots.map(s=>({sit:true,...s}))})}
 
   // Shell: windows and back rooms along the top, outer walls, and the entrance gap at the bottom.
   block(0,0,48,5);block(0,5,3,25);block(47,5,1,25);block(0,30,48,2);
@@ -24,14 +26,14 @@
   // Open-plan workstations. Monitors facing away from the camera mean the seat is on the near side.
   // The art has no chair behind this desk, so the manager uses the pictured chair in front of it like everyone else.
   desk('manager',3,10,4,2,'Manager desk',[seat(4,12,'up',-.05)]);
-  desk('research',9,10,3,2,'Research workstation',[seat(10,12,'up',-.35)]);
-  desk('analysis',12,10,2,2,'Analysis workstation',[seat(12,12,'up')]);
-  desk('developer',15,10,3,2,'Development workstation',[seat(16,12,'up',-.05)]);
-  desk('qa',18,10,2,2,'QA workstation',[seat(18,12,'up',.15)]);
+  desk('research',9,10,3,2,'Research workstation',[seat(10,12,'up',-.35,-.31)]);
+  desk('analysis',12,10,2,2,'Analysis workstation',[seat(12,12,'up',0,-.31)]);
+  desk('developer',15,10,3,2,'Development workstation',[seat(16,12,'up',-.05,-.31)]);
+  desk('qa',18,10,2,2,'Quality assurance workstation',[seat(18,12,'up',.15,-.31)]);
   block(10,9,1,1);block(12,9,1,1);block(16,9,1,1);block(18,9,1,1);
-  desk('hotdesk',2,14,4,2,'Hot desk',[seat(4,16,'up',-.35)]);
-  desk('ai',10,15,4,2,'AI workstation',[seat(12,17,'up',-.4)]);block(9,16,1,2);
-  desk('pair',15,15,4,2,'Pair programming desk',[seat(17,17,'up',-.4),seat(15,17,'up',.5)],'collaboration');block(19,15,2,3);
+  desk('hotdesk',2,14,4,2,'Hot desk',[seat(4,16,'up',-.53,-.06)]);
+  desk('ai',10,15,4,2,'Assistant workstation',[seat(12,17,'up',-.28,.25)]);block(9,16,1,2);
+  desk('pair',15,15,4,2,'Pair programming desk',[seat(17,17,'up',-.22,.25),{...seat(15,17,'up',.5),sit:false}],'collaboration');block(19,15,2,3);
   block(6,13,2,4);block(9,20,7,3);
 
   // Lower lounge, reception and entrance vestibule.
