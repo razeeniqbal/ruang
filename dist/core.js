@@ -102,6 +102,7 @@
       if(task.status==='NEEDS_APPROVAL')return 'NEEDS_APPROVAL';
       if(task.status==='BLOCKED')return 'BLOCKED';
       if(task.status==='WAITING')return 'WAITING';
+      if(task.status==='PLANNING')return 'THINKING';
       return ACTIVITY_STATUS[task.activity]||'WORKING';// ASSIGNED means on the way to start this work
     }
     const recent=(state.tasks||[]).filter(t=>t.assignedAgent===agentId&&t.completedAt&&now-t.completedAt<completeFor).sort((a,b)=>b.completedAt-a.completedAt)[0];

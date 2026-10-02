@@ -11,13 +11,13 @@
   function savePositions(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{state.officePositionsV4=actors.map(tile);persist()},400)}
   function say(text){message=text;const el=$('#office-message');if(el)el.textContent=text}
   function taskFor(i){const p=state.projects.find(p=>p.status==='Running'&&p.tasks[p.step]?.agent===i);if(p)return {id:p.id+':'+p.step,title:p.tasks[p.step].title,kind:taskKinds[i%5],project:p};const id=state.agents[i].id,t=Core.currentTask(state,id)||Core.nextQueuedTask(state,id);return t?{id:t.id,title:t.title,kind:kindFor(t.activity),record:t}:null}
-  function setTask(id,to,extra={}){const k=state.tasks.findIndex(t=>t.id===id);if(k<0)return null;state.tasks[k]=Core.transitionTask(state.tasks[k],to,extra);persist();return state.tasks[k]}
-  function completeDemoTask(i,rec,now){const a=actors[i],agent=state.agents[i];
-    const art=Core.createArtifact({title:`${rec.title} (demo output)`,type:'document',taskId:rec.id,projectId:rec.projectId,creator:rec.assignedAgent,status:'DRAFT',
-      content:`# ${rec.title}\n\nDemo output from ${agent.name}. No model or tool was called, so this placeholder shows where real work will appear.\n`});
-    state.artifacts.push(art);const done=setTask(rec.id,'COMPLETED');done.artifacts=[...done.artifacts,art.id];
-    Core.recordActivity(state,{type:'task.completed',text:`${agent.name} completed “${rec.title}” and left an output to review.`,agentId:rec.assignedAgent,taskId:rec.id});persist();
-    a.taskId=null;a.doneUntil=now+3000;clearInteraction(i);a.mode='Idle';a.nextAmbient=now+6000;say(`${agent.name} finished “${rec.title}”. The output is waiting in your Inbox.`)}
+  // The office never changes task state: the task runner (task-runner.js) does. Here the character only
+  // shows what the record says: what they are doing at the desk follows the task's current state.
+  const TASK_ACTION={QUEUED:'Getting ready',ASSIGNED:'Getting ready',PLANNING:'Thinking',RUNNING:'Typing',WAITING:'Waiting',NEEDS_APPROVAL:'Waiting for you',BLOCKED:'Stuck, waiting for you'};
+  function taskAction(rec){return rec.status==='RUNNING'&&rec.activity==='research'?'Reading':TASK_ACTION[rec.status]||'Working'}
+  function finished(i,id,now){const a=actors[i],agent=state.agents[i],rec=state.tasks.find(t=>t.id===id);a.doneUntil=now+3000;
+    if(rec?.status==='COMPLETED')say(`${agent.name} finished “${rec.title}”. The output is waiting in your Inbox.`);
+    else if(rec?.status==='FAILED')say(`${agent.name} could not finish “${rec.title}”. It is in your Inbox with a Try again button.`)}
   function clearInteraction(i){engine.release(i);const a=actors[i];a.objectId=null;a.slot=null;a.reason=null;a.holdUntil=0}
   function goLocation(i,ids,reason='manual',now=performance.now()){
     const a=actors[i];if(reason!=='task'&&taskFor(i)){say(`${state.agents[i].name} has an assigned task. Task activity takes priority.`);return false}
@@ -26,18 +26,17 @@
     if(!a.path.length)arrive(i,now);if(reason==='manual')say(`${state.agents[i].name} → ${found.object.name}${found.object.id!==ids[0]?' (alternative free location)':''}.`);updatePanel();return true;
   }
   function move(i,p){if(taskFor(i)){say('An assigned task takes priority. Choose an idle teammate to move manually.');return}const a=actors[i],route=engine.route(tile(a),p);if(route===null){say('Choose an open floor tile. Furniture and walls block walking.');return}clearInteraction(i);a.path=route;a.mode=route.length?'Walking':'Idle';a.location='Office floor';a.nextAmbient=performance.now()+14000;say(`${state.agents[i].name} is ${route.length?'walking there':'already there'}.`)}
-  function arrive(i,now){const a=actors[i];if(a.slot?.face)a.direction=a.slot.face;if(a.objectId){const o=engine.objects.get(a.objectId);a.location=o.name;a.mode=labels[o.actions?.[0]]||'Using location';a.holdUntil=now+8000;if(a.reason==='task'){a.mode='Working';const t=taskFor(i)?.record;if(t?.status==='ASSIGNED'){setTask(t.id,'RUNNING');Core.recordActivity(state,{type:'task.started',text:`${state.agents[i].name} started “${t.title}” at ${a.location.toLowerCase()}.`,agentId:t.assignedAgent,taskId:t.id})}}}else a.mode='Idle';a.nextAmbient=now+6000+Math.random()*7000;savePositions();if(i===chosen)say(`${state.agents[i].name} arrived at ${a.location.toLowerCase()}.`)}
+  function arrive(i,now){const a=actors[i];if(a.slot?.face)a.direction=a.slot.face;if(a.objectId){const o=engine.objects.get(a.objectId);a.location=o.name;a.mode=labels[o.actions?.[0]]||'Using location';a.holdUntil=now+8000;if(a.reason==='task'){const t=taskFor(i)?.record;a.mode=t?taskAction(t):'Working'}}else a.mode='Idle';a.nextAmbient=now+6000+Math.random()*7000;savePositions();if(i===chosen)say(`${state.agents[i].name} arrived at ${a.location.toLowerCase()}.`)}
   function update(dt,now){if(Core.syncProjectApprovals(state))persist();actors.forEach((a,i)=>{
     const task=taskFor(i);
-    if((task?.id||null)!==a.taskId){if(a.taskId&&!task)a.doneUntil=now+3000;clearInteraction(i);a.taskId=task?.id||null;a.path=[];a.mode='Idle';if(task){if(task.record?.status==='QUEUED'){setTask(task.id,'ASSIGNED');Core.recordActivity(state,{type:'task.assigned',text:`${state.agents[i].name} picked up “${task.title}”.`,agentId:state.agents[i].id,taskId:task.id})}goLocation(i,locations[task.kind]||locations[taskKinds[i%5]],'task',now)}else a.nextAmbient=now+4000}
+    if((task?.id||null)!==a.taskId){if(a.taskId&&!task)finished(i,a.taskId,now);clearInteraction(i);a.taskId=task?.id||null;a.path=[];a.mode='Idle';if(task)goLocation(i,locations[task.kind]||locations[taskKinds[i%5]],'task',now);else a.nextAmbient=now+4000}
+    // The model call starts as soon as the task does; walking to the desk overlaps it rather than delaying it.
+    if(task?.record&&!a.path.length&&a.objectId&&a.reason==='task')a.mode=taskAction(task.record);
     if(task&&!a.objectId&&now>a.nextAmbient){goLocation(i,locations[task.kind]||locations.planning,'task',now);a.nextAmbient=now+1500}
     if(!paused){a.clock+=dt;if(a.path.length){const p=a.path[0],x=(p.x+.5)*T,y=(p.y+.75)*T,dx=x-a.x,dy=y-a.y,d=Math.hypot(dx,dy),step=dt*.055*T/16;a.direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';if(d<=step){a.x=x;a.y=y;a.path.shift();if(!a.path.length)arrive(i,now)}else{a.x+=dx/d*step;a.y+=dy/d*step}}
       else if(!task&&a.objectId&&now>a.holdUntil){clearInteraction(i);a.mode='Idle';a.nextAmbient=now+2500}
       else if(!task&&roam&&!a.path.length&&!a.objectId&&now>a.nextAmbient){const candidates=engine.interactions.filter(o=>['break','fun','research'].includes(o.kind)).map(o=>o.id);const start=Math.floor(Math.random()*candidates.length);goLocation(i,[...candidates.slice(start),...candidates.slice(0,start)],'ambient',now);a.nextAmbient=now+9000}
     }
-    // Demo tasks have no model behind them yet: they count down while the employee is at the destination,
-    // then complete with an output that waits in the Inbox for review.
-    const rec=task?.record;if(rec?.status==='RUNNING'&&rec.metadata?.demo&&!a.path.length&&a.objectId&&!paused){rec.metadata.remainingMs=Math.max(0,(rec.metadata.remainingMs??14000)-dt);if(rec.metadata.remainingMs===0)completeDemoTask(i,rec,now)}
   })}
   // The office is the V2 backdrop image; furniture is painted into it, so only people and status are drawn live.
   function makeBackground(){const img=new Image();img.src=layout.background;background=img}
@@ -111,19 +110,18 @@
     const s=statusOf(k),status=badge(Core.STATUS_LABELS[s],Core.STATUS_PROMINENCE[s]==='prominent'?'demo':'');if(force||w.status!==status){w.status=status;w.el.querySelector('.ow-status').innerHTML=status}
     const body=w.el.querySelector('.ow-info,.ow-activity');if(body){const html=body.classList.contains('ow-info')?infoHTML(k):activityHTML(k);if(force||html!==w.html){w.html=html;body.innerHTML=html}}}
   function refreshChat(i){const msgs=wins.get(i)?.el?.querySelector('.ow-msgs');if(msgs){msgs.innerHTML=chatHTML(i);msgs.scrollTop=msgs.scrollHeight}}
-  // Chat goes through the desktop model gateway when this employee's provider has a saved key; otherwise a
-  // clearly labelled demo reply. Keys never reach this page; usage is recorded per employee and model.
+  // Chat and tasks share one gateway client (gateway-client.js) and one identity prompt (task-runner.js).
+  // Without a saved key for the employee's provider, chat gives a clearly labelled demo reply.
   let modelStatus={};
-  async function refreshModelStatus(){try{modelStatus=window.desktop?.model?await window.desktop.model.status():{}}catch{modelStatus={}}return modelStatus}
+  async function refreshModelStatus(){modelStatus=await RuangGateway.status();return modelStatus}
   const canGenerate=agent=>!!(agent.model?.provider&&modelStatus[agent.model.provider]?.ready);
-  const cleanError=e=>String(e?.message||e).replace(/^Error invoking remote method '[^']+': Error: /,'');
-  function systemPrompt(agent){return [`You are ${agent.name}, the ${agent.role} on a small team working inside Ruang, a shared digital workspace where a person works with a team of AI employees.`,
-    agent.description,agent.instructions,'Reply as a helpful teammate: clear, concise and practical. In this chat you cannot run tools, read files or take actions yet, so say so plainly if you are asked to.'].filter(Boolean).join('\n\n')}
+  const cleanError=e=>RuangGateway.clean(e);
+  function systemPrompt(agent){return [RuangTaskRunner.identityPrompt(agent),'Reply as a helpful teammate: clear, concise and practical. In this chat you cannot run tools, read files or take actions yet. For work you want done and saved, the person can assign you a task.'].join('\n\n')}
   async function sendChat(i,text){const agent=state.agents[i],k=agentKey(i),log=state.officeChat[k] ||= [];log.push({who:'You',text,at:Date.now()});wins.get(i).typing=true;refreshChat(i);persist();
     let reply;await refreshModelStatus();
     if(canGenerate(agent)){
       const history=log.filter(m=>!m.error&&!m.demo).slice(-20).map(m=>({role:m.who==='You'?'user':'assistant',content:m.text}));while(history.length&&history[0].role!=='user')history.shift();
-      try{const r=await window.desktop.model.generate({provider:agent.model.provider,model:agent.model.model||null,system:systemPrompt(agent),messages:history});
+      try{const r=await RuangGateway.generate({provider:agent.model.provider,model:agent.model.model||null,system:systemPrompt(agent),messages:history});
         reply={who:agent.name,text:r.text||'(The model sent an empty reply.)',at:Date.now(),model:r.model};
         (state.usage ||= []).push({agentId:agent.id,provider:r.provider,model:r.model,inputTokens:r.usage.inputTokens,outputTokens:r.usage.outputTokens,durationMs:r.durationMs,kind:'chat',at:Date.now()});state.usage=state.usage.slice(-1000)}
       catch(e){reply={who:agent.name,text:cleanError(e),at:Date.now(),error:true};Core.recordActivity(state,{type:'chat.error',text:`${agent.name} could not reply: ${cleanError(e)}`,agentId:agent.id})}}
@@ -160,7 +158,12 @@
     canvas.addEventListener('keydown',e=>{const dirs={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};if(dirs[e.key]){e.preventDefault();if(paused)return;const a=actors[chosen],p=a.path.at(-1)||tile(a),[dx,dy]=dirs[e.key];move(chosen,{x:p.x+dx,y:p.y+dy})}if(e.key==='Enter')openWin(chosen)});
     document.querySelectorAll('.dock-item canvas').forEach(c=>portrait(c,Number(c.closest('.dock-item').dataset.officeAgent),36));
     for(const [k,w] of wins){w.el=null;if(!w.min)buildWin(k)}refreshChrome();refreshModelStatus().then(()=>{for(const [k,w] of wins)if(isAgent(k)&&w.mode==='chat'&&w.el&&!w.el.querySelector('input')?.value)buildWin(k)});if(!raf){last=performance.now();raf=requestAnimationFrame(draw)}}
-  function assign(i=chosen){show(`<h2>Assign a task to ${esc(state.agents[i].name)}</h2><p class="notice">This is a local simulation. No model provider or execution tool is connected.</p><form id="office-task-form"><label for="office-task-title">Task</label><input id="office-task-title" name="title" required maxlength="120" placeholder="For example: Review the prototype"><label for="office-task-kind">Activity</label><select name="kind" id="office-task-kind">${taskKinds.map(k=>`<option value="${k}" ${taskKinds[i%5]===k?'selected':''}>${k[0].toUpperCase()+k.slice(1)}</option>`).join('')}</select><div class="dialog-actions"><button type="button" data-close>Cancel</button><button class="primary">Assign demo task</button></div></form>`);$('#office-task-form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),title=f.get('title').trim();if(!title)return;const task=Core.createTask({title,assignedAgent:state.agents[i].id,activity:f.get('kind'),metadata:{demo:true,remainingMs:14000}});state.tasks.push(task);Core.recordActivity(state,{type:'task.created',text:`You assigned “${title}” to ${state.agents[i].name}.`,agentId:state.agents[i].id,taskId:task.id});persist();$('#dialog').close();updatePanel(true)}}
+  function assign(i=chosen){const agent=state.agents[i],m=agent.model||{};
+    const note=canGenerate(agent)?`${esc(agent.name)} will work on this with ${esc(PROVIDER_NAMES[m.provider])}${m.model?', '+esc(m.model):''}. The result is saved and lands in your Inbox.`:`${esc(agent.name)} has no connected model yet, so this task will stop with a clear message. Choose a provider under Employee details and save a key in Settings, then use Try again.`;
+    show(`<h2>Assign a task to ${esc(agent.name)}</h2><p class="notice">${note}</p><form id="office-task-form"><label for="office-task-title">Task</label><input id="office-task-title" name="title" required maxlength="160" placeholder="For example: Explain the difference between JSON and JSONB in PostgreSQL"><label for="office-task-detail">Details (optional)</label><textarea id="office-task-detail" name="description" maxlength="4000" placeholder="Anything that helps: audience, length, format, constraints"></textarea><label for="office-task-kind">Kind of work</label><select name="kind" id="office-task-kind">${Core.ACTIVITIES.map(k=>`<option value="${k}" ${taskKinds[i%5]===k?'selected':''}>${k[0].toUpperCase()+k.slice(1)}</option>`).join('')}</select><div class="dialog-actions"><button type="button" data-close>Cancel</button><button class="primary">Assign task</button></div></form>`);
+    $('#office-task-form').onsubmit=e=>{e.preventDefault();e.stopPropagation();const f=new FormData(e.target),title=String(f.get('title')).trim();if(!title)return;
+      const task=Core.createTask({title,description:String(f.get('description')||'').trim(),assignedAgent:agent.id,activity:f.get('kind')});state.tasks.push(task);
+      Core.recordActivity(state,{type:'task.created',text:`You assigned “${title}” to ${agent.name}.`,agentId:agent.id,taskId:task.id});persist();$('#dialog').close();updatePanel(true);RuangTasks.pump()}}
   const baseBody=bodyView;bodyView=function(p){let html=baseBody(p);if(view==='Tasks'&&state.tasks.length)html=`<section class="panel office-task-list"><div class="panel-head"><h2>Employee tasks</h2></div>${state.tasks.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>`<div class="task"><div class="task-main"><h3>${esc(t.title)}</h3><p class="muted">${esc(state.agents.find(a=>a.id===t.assignedAgent)?.name||'Unassigned')}, ${esc(t.activity)}${t.metadata?.demo?', demo':''}</p></div>${badge(t.status.replace('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase()),['NEEDS_APPROVAL','BLOCKED','FAILED'].includes(t.status)?'demo':'')}</div>`).join('')}</section>`+html;return html};
   const baseRender=render;render=function(){baseRender();document.title='Ruang';const brand=$('.brand');if(brand)brand.innerHTML='<img class="brand-symbol" src="v2/logo-symbol.png" alt=""><img class="brand-wordmark" src="v2/logo-wordmark.png" alt="Ruang">';if($('.tagline'))$('.tagline').textContent='Idea besar. Ruang sendiri.';document.querySelectorAll('.nav button').forEach(b=>b.title=b.textContent.trim());$('.shell')?.classList.toggle('office-mode',view==='Office');if(view!=='Office')return;
     $('.main').innerHTML=`<section class="office-full" aria-label="Office">

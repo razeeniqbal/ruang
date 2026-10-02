@@ -15,9 +15,9 @@
       actions=r.projectId?`<button class="primary" data-approve="${r.projectId}">Review approval</button>`:`<button data-inbox-reject="${r.id}">Reject</button><button class="primary" data-inbox-approve="${r.id}">Approve</button>`}
     else if(it.kind==='question'){title=r.text;actions=`<button data-inbox-answered="${r.id}">Mark answered</button>`}
     else if(it.kind==='blocked'){title=r.title;detail=r.error||'This task cannot continue without you.';actions=`<button data-inbox-cancel="${r.id}">Cancel task</button><button class="primary" data-inbox-resume="${r.id}">Resume</button>`}
-    else if(it.kind==='failed'){title=r.title;detail=r.error||'The task failed.';actions=`<button data-inbox-dismiss="${r.id}">Dismiss</button><button class="primary" data-inbox-retry="${r.id}">Try again</button>`}
-    else{title=r.title;const art=state.artifacts.find(a=>a.taskId===r.id);detail=art?`Output: ${art.title}`:'Completed without a saved output.';
-      actions=`${art?`<button data-inbox-open="${art.id}">Open output</button>`:''}<button class="primary" data-inbox-reviewed="${r.id}">Mark reviewed</button>`}
+    else if(it.kind==='failed'){title=r.title;const tries=r.metadata?.attempts?.length||0;detail=(r.error||'The task failed.')+(tries>1?` Attempts so far: ${tries}.`:'');actions=`<button data-inbox-dismiss="${r.id}">Dismiss</button><button class="primary" data-inbox-retry="${r.id}">Try again</button>`}
+    else{title=`${agentName(r.assignedAgent)} completed: ${r.title}`;const art=[...state.artifacts].reverse().find(a=>a.taskId===r.id);detail=art?String(art.content).replace(/[#*_`>]/g,'').trim().slice(0,180)+(art.content.length>180?'…':''):'Completed without a saved output.';
+      actions=`${art?`<button class="primary" data-inbox-open="${art.id}">Review output</button>`:''}<button data-inbox-reviewed="${r.id}">Mark reviewed</button>`}
     return `<li class="inbox-item ${tone}"><div class="inbox-meta">${badge(label,tone==='prominent'?'demo':'')}<span class="small muted">${esc(agentName(it.agentId))}${project?`, ${esc(project.name)}`:''}${task&&it.kind==='approval'?`, ${esc(task.title)}`:''}</span><time class="small muted">${time(it.at)}</time></div><h3>${esc(title)}</h3>${detail?`<p class="muted small">${esc(detail)}</p>`:''}<div class="inbox-actions">${actions}</div></li>`}
 
   function inboxView(){Core.syncProjectApprovals(state);const items=Core.inboxItems(state);
@@ -35,11 +35,15 @@
         done(`You ${approve?'approved':'rejected'}: ${ap.requestedAction}.`,{agentId:ap.requestingAgent,taskId:ap.taskId})}
       if(d.inboxResume){const t=setTask(d.inboxResume,'QUEUED');done(`You resumed “${t.title}”.`,{agentId:t.assignedAgent,taskId:t.id})}
       if(d.inboxCancel){const t=setTask(d.inboxCancel,'CANCELLED');done(`You cancelled “${t.title}”.`,{agentId:t.assignedAgent,taskId:t.id})}
-      if(d.inboxRetry){const t=setTask(d.inboxRetry,'QUEUED');done(`You asked for another try at “${t.title}”.`,{agentId:t.assignedAgent,taskId:t.id})}
+      // Same task, new attempt; the runner refuses anything that is not failed, so repeated clicks do nothing.
+      if(d.inboxRetry){b.disabled=true;RuangTasks.retry(d.inboxRetry);render()}
       if(d.inboxDismiss){const t=taskById(d.inboxDismiss);t.metadata={...t.metadata,acknowledged:true};done('',{})}
       if(d.inboxReviewed){const t=taskById(d.inboxReviewed);t.metadata={...t.metadata,reviewed:true};for(const a of state.artifacts)if(a.taskId===t.id&&a.status==='DRAFT')a.status='REVIEWED';if($('#dialog').open)$('#dialog').close();done(`You reviewed “${t.title}”.`,{agentId:t.assignedAgent,taskId:t.id})}
       if(d.inboxAnswered){const q=state.questions.find(q=>q.id===d.inboxAnswered);q.status='ANSWERED';done('',{})}
-      if(d.inboxOpen){const a=state.artifacts.find(x=>x.id===d.inboxOpen);show(`<h2>${esc(a.title)}</h2><p class="small muted">From ${esc(agentName(a.creator))}, ${time(a.createdAt)}, version ${a.version}</p><pre>${esc(a.content)}</pre><div class="dialog-actions"><button data-close>Close</button>${a.taskId&&!taskById(a.taskId)?.metadata?.reviewed?`<button class="primary" data-inbox-reviewed="${a.taskId}">Mark reviewed</button>`:''}</div>`)}
+      if(d.inboxOpen){const a=state.artifacts.find(x=>x.id===d.inboxOpen),t=a.taskId&&taskById(a.taskId),m=a.metadata||{},u=m.usage;
+        const facts=[t&&`Task: ${t.title}`,`By ${agentName(a.creator)}`,t?.completedAt?`Completed ${time(t.completedAt)}`:`Created ${time(a.createdAt)}`,m.model&&`Model: ${m.model}`,u&&`${u.totalTokens??(u.inputTokens+u.outputTokens)} tokens`,m.durationMs&&`${Math.round(m.durationMs/100)/10} seconds`].filter(Boolean);
+        const steps=t?state.activity.filter(e=>e.taskId===t.id).slice(0,8).reverse():[];
+        show(`<h2>${esc(a.title)}</h2><p class="small muted">${facts.map(esc).join(' · ')}</p><pre class="artifact-body">${esc(a.content)}</pre>${steps.length?`<details class="artifact-steps"><summary>What happened</summary><ol class="ow-log">${steps.map(e=>`<li><time>${new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time><span>${esc(e.text)}</span></li>`).join('')}</ol></details>`:''}<div class="dialog-actions"><button data-close>Close</button>${t&&!t.metadata?.reviewed?`<button class="primary" data-inbox-reviewed="${t.id}">Mark reviewed</button>`:''}</div>`)}
     }catch(error){alert(error.message)}});
   function openArtifact(id){const b=document.createElement('button');b.dataset.inboxOpen=id;b.hidden=true;document.body.append(b);b.click();b.remove()}
   window.RuangInbox={count,openArtifact};
