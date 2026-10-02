@@ -41,5 +41,6 @@
       if(d.inboxAnswered){const q=state.questions.find(q=>q.id===d.inboxAnswered);q.status='ANSWERED';done('',{})}
       if(d.inboxOpen){const a=state.artifacts.find(x=>x.id===d.inboxOpen);show(`<h2>${esc(a.title)}</h2><p class="small muted">From ${esc(agentName(a.creator))}, ${time(a.createdAt)}, version ${a.version}</p><pre>${esc(a.content)}</pre><div class="dialog-actions"><button data-close>Close</button>${a.taskId&&!taskById(a.taskId)?.metadata?.reviewed?`<button class="primary" data-inbox-reviewed="${a.taskId}">Mark reviewed</button>`:''}</div>`)}
     }catch(error){alert(error.message)}});
-  window.RuangInbox={count};
+  function openArtifact(id){const b=document.createElement('button');b.dataset.inboxOpen=id;b.hidden=true;document.body.append(b);b.click();b.remove()}
+  window.RuangInbox={count,openArtifact};
 })();
