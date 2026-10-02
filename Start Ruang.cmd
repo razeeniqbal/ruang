@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
-if exist "release\Ruang-0.12.0\Ruang.exe" (
-  start "" "release\Ruang-0.12.0\Ruang.exe"
+if exist "release\Ruang-0.13.0\Ruang.exe" (
+  start "" "release\Ruang-0.13.0\Ruang.exe"
 ) else (
   call npm.cmd start
 )
