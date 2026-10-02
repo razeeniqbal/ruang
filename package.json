@@ -1,0 +1,23 @@
+{
+  "name": "ai-office-desktop",
+  "productName": "Ruang",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Ruang — a local AI workspace with a walking pixel office",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test desktop/workspace.test.cjs desktop/office-engine.test.cjs desktop/connections.test.cjs desktop/code-documents.test.cjs",
+    "export-assets": "node desktop/export-native-assets.cjs",
+    "package": "node desktop/package.cjs",
+    "build:editor": "node desktop/build-editor.cjs"
+  },
+  "author": "AI Office",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^44.4.1",
+    "esbuild": "^0.28.2",
+    "esbuild-wasm": "^0.28.2",
+    "monaco-editor": "^0.56.0"
+  }
+}

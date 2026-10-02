@@ -1,0 +1,19 @@
+const {contextBridge,ipcRenderer}=require('electron');
+contextBridge.exposeInMainWorld('desktop',Object.freeze({
+  info:()=>ipcRenderer.invoke('office:info'),
+  chooseFolder:()=>ipcRenderer.invoke('office:choose-folder'),
+  listFiles:relative=>ipcRenderer.invoke('office:list',relative),
+  readFile:relative=>ipcRenderer.invoke('office:read',relative),
+  saveFile:change=>ipcRenderer.invoke('office:save',change),
+  connections:Object.freeze({
+    list:()=>ipcRenderer.invoke('connections:list'),
+    login:id=>ipcRenderer.invoke('connections:login',id),
+    install:id=>ipcRenderer.invoke('connections:install',id),
+    checkCLI:id=>ipcRenderer.invoke('connections:check-cli',id),
+    saveKey:(id,key)=>ipcRenderer.invoke('connections:save-key',id,key),
+    checkAPI:id=>ipcRenderer.invoke('connections:check-api',id),
+    disconnect:id=>ipcRenderer.invoke('connections:disconnect',id),
+    docs:id=>ipcRenderer.invoke('connections:docs',id),
+    chooseTool:id=>ipcRenderer.invoke('connections:choose-tool',id)
+  })
+}));

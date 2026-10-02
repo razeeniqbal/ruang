@@ -1,0 +1,7 @@
+node_modules/
+release/
+data/
+smoke-data/
+desktop-smoke-result.json
+
+.claude/

@@ -1,0 +1,32 @@
+(() => {
+  const MAX=256*1024,images=new Map();let previewTimer;
+  state.agentAppearance ||= {};
+  const key=i=>state.agents[i].id||`employee-${i}`;
+  function config(i){return state.agentAppearance[key(i)]}
+  function getImage(i){const c=config(i);if(!c||c.skinType!=='custom'||!c.spriteUrl?.startsWith('data:image/png;base64,'))return null;let image=images.get(c.spriteUrl);if(!image){image=new Image();image.src=c.spriteUrl;images.set(c.spriteUrl,image)}return image.complete&&image.naturalWidth===64?image:null}
+  function draw(ctx,i,action,direction,frame,x,y,scale=1){const custom=getImage(i),c=config(i);if(custom){const name=action==='walk'?`walk_${direction}`:`idle_${direction}`,row=c.animationMap?.[name];const h=c.frameHeight;if(![24,28].includes(h)||!Number.isInteger(row)||row<0||row>7)return;ctx.drawImage(custom,(action==='walk'?frame%4:0)*16,row*h,16,h,Math.round(x),Math.round(y-h*scale),16*scale,h*scale)}else{const sprite=PixelAssets.character(i,direction,frame,action);ctx.drawImage(sprite,Math.round(x),Math.round(y-24*scale),16*scale,24*scale)}}
+  async function validate(file){
+    if(file.size>MAX)throw Error('Use a PNG smaller than 256 KB.');const bytes=new Uint8Array(await file.arrayBuffer());
+    if(![137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v))throw Error('This file is not a PNG.');
+    const blob=new Blob([bytes],{type:'image/png'}),url=URL.createObjectURL(blob),image=new Image();
+    try{await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error('The PNG could not be decoded.'));image.src=url});
+      const width=image.naturalWidth,height=image.naturalHeight;if(width!==64||![192,224].includes(height))throw Error('Expected 64 × 192 pixels (16 × 24 frames), or 64 × 224 pixels (16 × 28 frames).');
+      const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0);const data=ctx.getImageData(0,0,width,height).data;let transparent=false,visible=false;const colors=new Set();
+      for(let p=0;p<data.length;p+=4){const a=data[p+3];if(a===0)transparent=true;else{visible=true;if(a!==255)throw Error('Use hard pixel edges: alpha must be fully opaque or fully transparent.');colors.add(`${data[p]},${data[p+1]},${data[p+2]}`)}}
+      if(!transparent||!visible)throw Error('The PNG needs both visible sprites and a genuinely transparent background.');if(colors.size>48)throw Error('Use a limited palette of at most 48 visible colors.');
+      const frameHeight=height/8;for(let row=0;row<8;row++)for(let col=0;col<(row<4?1:4);col++){let found=false;for(let y=row*frameHeight;y<(row+1)*frameHeight;y++)for(let x=col*16;x<(col+1)*16;x++)if(data[(y*64+x)*4+3])found=true;if(!found)throw Error(`Missing sprite in row ${row+1}, frame ${col+1}.`)}
+      return {skinType:'custom',spriteUrl:canvas.toDataURL('image/png'),frameWidth:16,frameHeight,animationMap:Object.fromEntries(PixelAssets.rows.map((name,i)=>[name,i]))};
+    }finally{URL.revokeObjectURL(url)}
+  }
+  function appearance(i){let pending=null;clearInterval(previewTimer);show(`<h2>${esc(state.agents[i].name)} · Appearance</h2><h3>Character skin</h3><p class="small muted">PNG only · max 256 KB · 48 colors · true transparency.<br>4 columns × 8 rows. Frames: 16 × 24 or 16 × 28 pixels.</p><details><summary>Sprite sheet template</summary><p class="small muted">Rows, top to bottom: idle down, up, left, right; walk down, up, left, right. Idle uses the first column. Walking uses all four columns. Keep feet aligned to the bottom of each frame. Additional actions fall back to idle.</p></details><div class="skin-preview"><canvas id="skin-preview" width="256" height="112" aria-label="Character skin animation preview"></canvas></div><label for="skin-file">Upload Custom Skin / Replace</label><input id="skin-file" type="file" accept="image/png"><p id="skin-result" role="status" class="small muted">${config(i)?.skinType==='custom'?'A custom skin is currently applied.':'Using the default character.'}</p><div class="dialog-actions skin-actions"><button type="button" id="skin-template">Download template</button><button type="button" id="skin-reset">Reset to default</button><button type="button" data-close>Close</button><button type="button" class="primary" id="skin-apply" disabled>Apply skin</button></div>`);
+    const preview=$('#skin-preview'),ctx=preview.getContext('2d');ctx.imageSmoothingEnabled=false;let frame=0,previewImage=null;
+    function paint(){ctx.clearRect(0,0,256,112);['down','up','left','right'].forEach((dir,n)=>{if(pending&&previewImage){ctx.drawImage(previewImage,frame%4*16,(n+4)*pending.frameHeight,16,pending.frameHeight,n*64,112-pending.frameHeight*4,64,pending.frameHeight*4)}else draw(ctx,i,'walk',dir,frame%4,n*64,112,4)});frame++}paint();previewTimer=setInterval(paint,160);
+    $('#skin-file').addEventListener('change',async e=>{pending=null;$('#skin-apply').disabled=true;const file=e.target.files[0];if(!file)return;try{const valid=await validate(file);if(!$('#skin-preview'))return;pending=valid;previewImage=new Image();await new Promise(resolve=>{previewImage.onload=resolve;previewImage.src=valid.spriteUrl});$('#skin-result').textContent=`Valid ${valid.frameWidth} × ${valid.frameHeight} skin. Preview it, then Apply.`;$('#skin-apply').disabled=false;paint()}catch(error){if($('#skin-result'))$('#skin-result').textContent=error.message}});
+    $('#skin-apply').onclick=()=>{if(!pending)return;state.agentAppearance[key(i)]={agentId:key(i),...pending};persist();$('#dialog').close();render()};
+    $('#skin-reset').onclick=()=>{delete state.agentAppearance[key(i)];persist();$('#dialog').close();render()};
+    $('#skin-template').onclick=()=>{const sheet=PixelAssets.skinSheet(i);sheet.toBlob(blob=>{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='ruang-skin-16x24.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/png')};
+  }
+  const originalEmployee=employee;employee=function(i){originalEmployee(i);const button=document.createElement('button');button.type='button';button.textContent='Appearance · Character skin';button.className='appearance-button';button.onclick=()=>appearance(i);$('#employee-form').insertBefore(button,$('#employee-form .dialog-actions'))};
+  $('#dialog').addEventListener('close',()=>clearInterval(previewTimer));
+  window.AgentSkins={draw,appearance,validate,config};
+})();

@@ -1,0 +1,154 @@
+{
+  "tile": 16,
+  "frameWidth": 16,
+  "frameHeight": 24,
+  "columns": 4,
+  "rows": [
+    "idle_down",
+    "idle_up",
+    "idle_left",
+    "idle_right",
+    "walk_down",
+    "walk_up",
+    "walk_left",
+    "walk_right"
+  ],
+  "assets": {
+    "floor": {
+      "width": 16,
+      "height": 16
+    },
+    "wall": {
+      "width": 16,
+      "height": 32
+    },
+    "window": {
+      "width": 32,
+      "height": 32
+    },
+    "desk": {
+      "width": 32,
+      "height": 16
+    },
+    "meeting": {
+      "width": 32,
+      "height": 32
+    },
+    "discussion": {
+      "width": 32,
+      "height": 24
+    },
+    "sofa": {
+      "width": 32,
+      "height": 16
+    },
+    "shelf": {
+      "width": 16,
+      "height": 32
+    },
+    "cabinet": {
+      "width": 16,
+      "height": 32
+    },
+    "server": {
+      "width": 16,
+      "height": 32
+    },
+    "whiteboard": {
+      "width": 32,
+      "height": 32
+    },
+    "projectboard": {
+      "width": 32,
+      "height": 32
+    },
+    "coffee": {
+      "width": 16,
+      "height": 24
+    },
+    "water": {
+      "width": 16,
+      "height": 24
+    },
+    "printer": {
+      "width": 16,
+      "height": 16
+    },
+    "chair": {
+      "width": 16,
+      "height": 16
+    },
+    "armchair": {
+      "width": 16,
+      "height": 16
+    },
+    "plant": {
+      "width": 16,
+      "height": 16
+    },
+    "cat": {
+      "width": 16,
+      "height": 16
+    },
+    "monitor": {
+      "width": 16,
+      "height": 16
+    },
+    "codeMonitor": {
+      "width": 16,
+      "height": 16
+    },
+    "chartMonitor": {
+      "width": 16,
+      "height": 16
+    },
+    "researchMonitor": {
+      "width": 16,
+      "height": 16
+    },
+    "checkMonitor": {
+      "width": 16,
+      "height": 16
+    },
+    "aiMonitor": {
+      "width": 16,
+      "height": 16
+    },
+    "papers": {
+      "width": 8,
+      "height": 8
+    },
+    "books": {
+      "width": 8,
+      "height": 8
+    },
+    "mug": {
+      "width": 8,
+      "height": 8
+    },
+    "rug": {
+      "width": 32,
+      "height": 32
+    },
+    "employee-0-16x24": {
+      "width": 64,
+      "height": 192
+    },
+    "employee-1-16x24": {
+      "width": 64,
+      "height": 192
+    },
+    "employee-2-16x24": {
+      "width": 64,
+      "height": 192
+    },
+    "employee-3-16x24": {
+      "width": 64,
+      "height": 192
+    },
+    "employee-4-16x24": {
+      "width": 64,
+      "height": 192
+    }
+  }
+}
