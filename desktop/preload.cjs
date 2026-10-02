@@ -5,6 +5,10 @@ contextBridge.exposeInMainWorld('desktop',Object.freeze({
   listFiles:relative=>ipcRenderer.invoke('office:list',relative),
   readFile:relative=>ipcRenderer.invoke('office:read',relative),
   saveFile:change=>ipcRenderer.invoke('office:save',change),
+  model:Object.freeze({
+    status:()=>ipcRenderer.invoke('model:status'),
+    generate:request=>ipcRenderer.invoke('model:generate',request)
+  }),
   connections:Object.freeze({
     list:()=>ipcRenderer.invoke('connections:list'),
     login:id=>ipcRenderer.invoke('connections:login',id),

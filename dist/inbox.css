@@ -16,6 +16,7 @@
 .inbox-empty{max-width:560px;text-align:center}
 .inbox-empty img{opacity:.85;margin-bottom:6px}
 
+.ow-msgs .them.error{background:#3a2224;border:1px solid #a05d50;color:#f1d4cf}
 .ow-approval small{color:#c9b98f;line-height:1.4}
 .ow-approval-actions{display:flex;gap:6px;margin-top:4px}
 .ow-approval-actions button{flex:1;font-size:12px;padding:6px}

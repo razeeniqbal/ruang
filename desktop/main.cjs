@@ -3,6 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {Workspace}=require('./workspace.cjs');
 const {Connections,provider}=require('./connections.cjs');
+const {ModelGateway}=require('./model-gateway.cjs');
 const {assetPath}=require('./asset-path.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'ruang',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 const workspace=new Workspace();
@@ -50,6 +51,10 @@ app.whenReady().then(async()=>{
   win.webContents.session.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
   function handle(channel,fn){ipcMain.handle(channel,async(event,...args)=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==indexURL)throw Error('Untrusted request.');return fn(...args)})}
   handle('office:info',()=>({folder:workspace.info(),version:app.getVersion(),storage:dataRoot}));
+  // Model gateway: renderer sends a validated conversation; keys stay in this process.
+  const models=new ModelGateway({connections});
+  handle('model:status',()=>models.status());
+  handle('model:generate',request=>models.generate(request));
   handle('connections:list',()=>connections.list());
   handle('connections:login',id=>connections.login(id));
   handle('connections:install',id=>connections.install(id));
