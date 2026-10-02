@@ -1,0 +1,26 @@
+/* Inbox page, navigation count, and the approval and activity blocks inside employee windows. */
+.nav-count{margin-left:auto;min-width:20px;padding:1px 6px;border-radius:10px;background:#e2bf7e;color:#182632;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.shell.office-mode .nav-count{position:absolute;margin:0;transform:translate(14px,-12px);font-size:10px;min-width:16px;line-height:15px;padding:0 4px}
+.shell.office-mode .nav button{position:relative}
+
+.inbox-lead{margin:0 0 18px;max-width:640px}
+.inbox-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;max-width:860px}
+.inbox-item{background:#172330;border:1px solid #31404d;border-left:3px solid #42505b;border-radius:10px;padding:14px 16px}
+.inbox-item.prominent{border-left-color:#e2bf7e}
+.inbox-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inbox-meta time{margin-left:auto}
+.inbox-item h3{margin:8px 0 4px;font-size:16px}
+.inbox-item p{margin:0 0 4px;line-height:1.5}
+.inbox-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
+.inbox-actions button{font-size:13px;padding:7px 12px}
+.inbox-empty{max-width:560px;text-align:center}
+.inbox-empty img{opacity:.85;margin-bottom:6px}
+
+.ow-approval small{color:#c9b98f;line-height:1.4}
+.ow-approval-actions{display:flex;gap:6px;margin-top:4px}
+.ow-approval-actions button{flex:1;font-size:12px;padding:6px}
+.ow-activity{padding:0 12px 12px;max-height:240px;overflow-y:auto}
+.ow-log{list-style:none;margin:0;padding:0;display:grid;gap:7px;font-size:12px}
+.ow-log li{display:grid;grid-template-columns:42px 1fr;gap:6px;line-height:1.4}
+.ow-log time{color:#90a0af}
+.hud-actions .hud-count{display:inline-block;min-width:16px;margin-left:5px;padding:0 5px;border-radius:9px;background:#e2bf7e;color:#182632;font-size:10.5px;font-weight:700;line-height:16px}
