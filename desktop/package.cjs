@@ -1,13 +1,14 @@
 const fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'..');
-const target=path.join(root,'release','Ruang-0.6');
+const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
+const target=path.join(root,'release','Ruang-'+pkg.version.split('.').slice(0,2).join('.'));
 if(fs.existsSync(target))throw Error('Release already exists. Choose a new release folder before packaging again.');
 fs.mkdirSync(target,{recursive:true});
 fs.cpSync(path.join(root,'node_modules','electron','dist'),target,{recursive:true});
 fs.renameSync(path.join(target,'electron.exe'),path.join(target,'Ruang.exe'));
 const dest=path.join(target,'resources','app');fs.mkdirSync(dest,{recursive:true});
 for(const dir of ['dist','desktop'])fs.cpSync(path.join(root,dir),path.join(dest,dir),{recursive:true});
-const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));delete pkg.devDependencies;
+delete pkg.devDependencies;
 fs.writeFileSync(path.join(dest,'package.json'),JSON.stringify(pkg,null,2));
 fs.copyFileSync(path.join(root,'README.md'),path.join(target,'README.md'));
 console.log(`Packaged Windows app: ${path.join(target,'Ruang.exe')}`);
