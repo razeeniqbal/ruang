@@ -27,3 +27,5 @@
 .hud-actions .hud-count{display:inline-block;min-width:16px;margin-left:5px;padding:0 5px;border-radius:9px;background:#e2bf7e;color:#182632;font-size:10.5px;font-weight:700;line-height:16px}
 .artifact-body{max-height:55vh;overflow:auto;white-space:pre-wrap;line-height:1.5;font-size:13px;background:#101a24;border:1px solid #31404d;border-radius:8px;padding:12px}
 .artifact-steps{margin-top:12px;font-size:12.5px}.artifact-steps summary{color:#a8b4be}.artifact-steps .ow-log{margin-top:8px}
+.ow-msgs .them.streaming::after{content:'';display:inline-block;width:6px;height:12px;margin-left:2px;background:#a8b4be;vertical-align:-1px;animation:ow-dot 1s infinite}
+.ow-msgs .them.demo{border:1px dashed #42505b;background:transparent;color:#a8b4be}
