@@ -29,3 +29,4 @@
 .artifact-steps{margin-top:12px;font-size:12.5px}.artifact-steps summary{color:#a8b4be}.artifact-steps .ow-log{margin-top:8px}
 .ow-msgs .them.streaming::after{content:'';display:inline-block;width:6px;height:12px;margin-left:2px;background:#a8b4be;vertical-align:-1px;animation:ow-dot 1s infinite}
 .ow-msgs .them.demo{border:1px dashed #42505b;background:transparent;color:#a8b4be}
+.ow-cancel{display:block;margin:0 0 10px auto;font-size:12px;padding:5px 10px;background:transparent;border:1px solid #6b4b47;color:#e8c3bd}.ow-cancel:hover{background:#3a2224}

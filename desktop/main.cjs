@@ -4,6 +4,7 @@ const {pathToFileURL}=require('node:url');
 const {Workspace}=require('./workspace.cjs');
 const {Connections,provider}=require('./connections.cjs');
 const {ModelGateway}=require('./model-gateway.cjs');
+const {ArtifactStore}=require('./artifact-store.cjs');
 const {assetPath}=require('./asset-path.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'ruang',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 const workspace=new Workspace();
@@ -66,6 +67,11 @@ app.whenReady().then(async()=>{
     finally{streams.delete(id)}
   });
   handle('model:cancel',id=>{streams.get(id)?.abort();return true});
+  // Task outputs: saved, read and checked by id only, inside the Ruang data folder.
+  const artifacts=new ArtifactStore({root:path.join(dataRoot,'artifacts')});
+  handle('artifact:save',record=>artifacts.save({id:record?.id,format:record?.format,content:record?.content}));
+  handle('artifact:read',id=>artifacts.read(id));
+  handle('artifact:exists',id=>artifacts.exists(id));
   handle('connections:list',()=>connections.list());
   handle('connections:login',id=>connections.login(id));
   handle('connections:install',id=>connections.install(id));
