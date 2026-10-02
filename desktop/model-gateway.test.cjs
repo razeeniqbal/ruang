@@ -12,7 +12,7 @@ test('validation rejects malformed or oversized requests before any key is unloc
   assert.throws(()=>validate({provider:'anthropic',messages:[{role:'system',content:'x'}]}),/Invalid conversation message/);
   assert.throws(()=>validate({provider:'anthropic',messages:[{role:'assistant',content:'hi'}]}),/start and end with your message/);
   assert.throws(()=>validate({provider:'anthropic',model:'bad model; rm',messages:convo}),/model name is not valid/);
-  assert.throws(()=>validate({provider:'anthropic',messages:[{role:'user',content:'x'.repeat(20001)}]}),/too long/);
+  assert.throws(()=>validate({provider:'anthropic',messages:[{role:'user',content:'x'.repeat(60001)}]}),/too long/);
   assert.deepEqual(validate({provider:'anthropic',messages:convo}).messages,convo);
 });
 

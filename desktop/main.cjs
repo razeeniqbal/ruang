@@ -55,6 +55,17 @@ app.whenReady().then(async()=>{
   const models=new ModelGateway({connections});
   handle('model:status',()=>models.status());
   handle('model:generate',request=>models.generate(request));
+  // Streaming: events go back to this window only, tagged with the caller's stream id. The result (or a
+  // {code, message} error) is returned as data so the reason survives the trip to the page.
+  const streams=new Map();
+  handle('model:stream',async(id,request)=>{
+    if(typeof id!=='string'||!/^[\w-]{8,64}$/.test(id)||streams.has(id))throw Error('Invalid stream.');
+    const controller=new AbortController();streams.set(id,controller);
+    try{const result=await models.stream(request,{signal:controller.signal,onEvent:event=>{if(!win.isDestroyed())win.webContents.send('model:stream-event',id,event)}});return {ok:true,result}}
+    catch(error){return {ok:false,error:{code:error.code||'PROVIDER',message:error.message}}}
+    finally{streams.delete(id)}
+  });
+  handle('model:cancel',id=>{streams.get(id)?.abort();return true});
   handle('connections:list',()=>connections.list());
   handle('connections:login',id=>connections.login(id));
   handle('connections:install',id=>connections.install(id));
