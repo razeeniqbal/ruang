@@ -2,7 +2,7 @@
   // V2 office: the backdrop is design/v2 "Master Test Office Composition" (1536x1024) on a 48x32 grid of 32px cells.
   // Furniture lives in the image, so objects here are invisible collision rectangles and interaction points.
   // Slots may carry dx/dy (fraction of a cell) to sit exactly on a pictured chair, and face for the seated direction.
-  const layout={version:6,width:48,height:32,tile:32,background:'v2/office.png',zones:[],objects:[],spawns:[{x:19,y:28},{x:12,y:8},{x:21,y:21},{x:36,y:23},{x:40,y:10}]};
+  const layout={version:6,width:48,height:32,tile:32,background:'v2/office.webp',zones:[],objects:[],spawns:[{x:19,y:28},{x:12,y:8},{x:21,y:21},{x:36,y:23},{x:40,y:10}]};
   function add(id,x,y,w=1,h=1,options={}){layout.objects.push({id,x,y,width:w,height:h,collision:true,...options})}
   let n=0;const block=(x,y,w,h)=>add('block-'+n++,x,y,w,h);
   const seat=(x,y,face,dx=0,dy=0)=>({x,y,face,dx,dy});

@@ -262,9 +262,35 @@ def build_logo():
     Image.fromarray(rgba).save(OUT / 'app-icon.png')
 
 
+def build_web_icons():
+    """Installable web app icons: the large symbol from section 01, recoloured cream and sand on deep teal."""
+    sheet = np.asarray(Image.open(SRC / 'Ruang Logo Concept.png').convert('RGB')).astype(float)
+    crop = sheet[88:318, 92:322]
+    page = np.median(sheet[60:80, 30:60].reshape(-1, 3), axis=0)
+    ink = np.abs(crop - page).sum(axis=2) / 160
+    alpha = np.clip((ink - 0.2) / 0.8, 0, 1)  # ignore the sheet's faint paper texture
+    sand = (crop[..., 0] - crop[..., 2] > 40) & (alpha > 0.5)
+    rgb = np.where(sand[..., None], np.array([212, 165, 116]), np.array([246, 241, 231]))
+    symbol = Image.fromarray(np.dstack([rgb, alpha * 255]).astype(np.uint8))
+    teal = (15, 47, 46, 255)
+    for size, inset in ((192, 0.16), (512, 0.16), (512, 0.24)):
+        tile = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        mask = Image.new('L', (size, size), 0)
+        from PIL import ImageDraw
+        maskable = inset > 0.2
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, size - 1, size - 1), radius=0 if maskable else size // 5, fill=255)
+        tile.paste(Image.new('RGBA', (size, size), teal), (0, 0), mask)
+        inner = int(size * (1 - inset * 2))
+        tile.alpha_composite(symbol.resize((inner, inner), Image.LANCZOS), ((size - inner) // 2, (size - inner) // 2))
+        tile.save(OUT / (f'icon-{size}-maskable.png' if maskable else f'icon-{size}.png'))
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     build_logo()
+    build_web_icons()
+    # Lossy WebP at quality 95 is visually identical for the backdrop and about 80% smaller than the PNG.
+    Image.open(SRC / 'RUANG V2 Master Test Office Composition.png').convert('RGB').save(OUT / 'office.webp', 'WEBP', quality=95, method=6)
     shutil.copyfile(SRC / 'RUANG V2 Master Test Office Composition.png', OUT / 'office.png')
 
     sheet = Image.open(SRC / 'RUANG V2 Employee Movement System.png').convert('RGB')

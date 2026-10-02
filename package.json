@@ -7,7 +7,7 @@
   "main": "desktop/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test desktop/core.test.cjs desktop/model-gateway.test.cjs desktop/workspace.test.cjs desktop/office-engine.test.cjs desktop/connections.test.cjs desktop/code-documents.test.cjs",
+    "test": "node --test desktop/core.test.cjs desktop/model-gateway.test.cjs desktop/web-shell.test.cjs desktop/workspace.test.cjs desktop/office-engine.test.cjs desktop/connections.test.cjs desktop/code-documents.test.cjs",
     "export-assets": "node desktop/export-native-assets.cjs",
     "package": "node desktop/package.cjs",
     "build:editor": "node desktop/build-editor.cjs"
