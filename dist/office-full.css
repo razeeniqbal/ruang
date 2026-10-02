@@ -1,0 +1,48 @@
+/* Full-screen office: the space fills the main area; controls, panels and the dock float above it. */
+.brand{display:flex;align-items:center;gap:10px}
+.brand-symbol{height:30px;width:auto}
+.brand-wordmark{height:15px;width:auto}
+
+/* On the office page the sidebar collapses to icons so the space can use the whole window. */
+.shell.office-mode{grid-template-columns:68px minmax(0,1fr)}
+.shell.office-mode .sidebar{padding:18px 8px;align-items:center}
+.shell.office-mode .brand-wordmark,.shell.office-mode .tagline{display:none}
+.shell.office-mode .brand{margin-bottom:26px}
+.shell.office-mode .nav button{font-size:0;gap:0;padding:12px;justify-content:center}
+.shell.office-mode .nav-icon{font-size:17px;width:auto}
+.shell.office-mode .owner>:not(.avatar){display:none}
+.shell.office-mode .main{padding:10px}
+
+.office-full{position:relative;height:calc(100vh - 20px);min-height:480px;border-radius:12px;overflow:hidden;background:#0c141b;border:1px solid #26333f}
+.office-full .office-viewport{position:absolute;inset:0;max-height:none;padding:0;background:transparent}
+.office-full .office-viewport.fit{display:flex;align-items:center;justify-content:center;overflow:hidden}
+.office-full .office-viewport.actual{overflow:auto}
+.office-full .office-pixel-stage{width:auto;margin:0}
+.office-full #office-canvas{display:block}
+.office-full #office-windows{z-index:5}
+
+.hud{position:absolute;z-index:6}
+.hud-top{top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;pointer-events:none}
+.hud-top>*{pointer-events:auto}
+.hud-title{display:flex;align-items:baseline;gap:8px;padding:8px 12px;background:rgba(16,26,36,.86);border:1px solid #31404d;border-radius:9px;backdrop-filter:blur(4px)}
+.hud-title span{font-size:12px;color:#a2b0bb}
+.hud-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;padding:6px;background:rgba(16,26,36,.86);border:1px solid #31404d;border-radius:10px;backdrop-filter:blur(4px)}
+.hud-actions button{font-size:12px;padding:7px 10px;background:#233645;border-color:#42505b}
+.hud-actions button[aria-pressed="true"]{background:#2c4256;color:#f0cf8a;border-color:#c3a875}
+.hud-actions .primary{background:#e2bf7e;color:#182632}
+.hud-sep{width:1px;background:#42505b;margin:2px 2px}
+.hud-message{left:0;right:0;bottom:78px;margin:0 auto;width:max-content;max-width:min(520px,calc(100% - 24px));padding:6px 11px;font-size:12px;line-height:1.45;color:#dbe3e8;background:rgba(16,26,36,.82);border:1px solid #31404d;border-radius:8px;pointer-events:none}
+.hud-message:empty{display:none}
+.office-full .office-dock{left:0;right:0;bottom:10px;margin-inline:auto;width:max-content;max-width:calc(100% - 20px);border:1px solid #31404d;border-radius:12px;background:rgba(19,30,42,.92);backdrop-filter:blur(4px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+
+/* Panels (project board, activity) share the teammate window look but have room for content. */
+.ow-panel{width:300px}
+.ow-glyph{width:22px;height:auto;margin-left:2px}
+.ow-panel .ow-body{padding:0 12px 12px;max-height:340px;overflow-y:auto;font-size:12.5px}
+.ow-panel .project-name{font-size:15px;margin:4px 0}
+.ow-panel .event{font-size:12px;padding:8px 0}
+.ow-panel-status{margin-bottom:6px}
+.ow-link{margin-top:8px;width:100%}
+.ow-more summary{font-size:12px!important;padding:7px 10px!important}
+
+@media(max-width:700px){.office-full{height:70vh}.hud-actions{max-width:70%}.hud-title{display:none}.hud-message{bottom:72px;max-width:calc(100% - 24px)}}

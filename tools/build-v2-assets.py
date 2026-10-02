@@ -31,13 +31,18 @@ PANELS = {
 }
 BG_TOLERANCE = 40
 
-# Employee variants: shirt colour, skin factor, hair colour (None keeps the dark V2 hair).
-VARIANTS = [
-    {'shirt': None, 'skin': 1.0, 'hair': None},                  # white shirt (V2 default)
-    {'shirt': (118, 160, 112), 'skin': 0.72, 'hair': None},      # sage shirt, deeper skin
-    {'shirt': (150, 192, 228), 'skin': 1.06, 'hair': (92, 62, 44)},  # light blue, brown hair
-    {'shirt': (78, 136, 142), 'skin': 0.86, 'hair': None},       # teal shirt
-    {'shirt': (214, 190, 150), 'skin': 0.94, 'hair': (70, 48, 38)},  # beige shirt
+# The cast comes from section 08 "Outfit variations" of the character sheet (front-facing figures).
+# Index into that row (11 figures): default, engineer, data, product, design, operations, management,
+# research, qa (hijab), casual, casual green.
+OUTFIT_ROW = (20, 505, 830, 640)
+# Employee order matches the app's default team: Manager, Researcher, Data analyst, Software engineer, QA.
+# head: 'hair' (short), 'long' (hair falls to the shoulders) or 'hijab'.
+CAST = [
+    {'outfit': 6, 'head': 'hair'},   # management: dark blazer, lanyard
+    {'outfit': 4, 'head': 'long'},   # design: green jacket, longer hair
+    {'outfit': 2, 'head': 'hair'},   # data: glasses, light blue shirt
+    {'outfit': 1, 'head': 'hair'},   # engineer: glasses, dark jacket
+    {'outfit': 8, 'head': 'hijab'},  # qa: navy hijab
 ]
 
 # Minimal status icon row on the status sheet: tile left edges, shared top/bottom.
@@ -116,29 +121,150 @@ def largest_component(mask):
     return out
 
 
-def recolor(rgba, variant):
-    out = rgba.copy()
-    rgb = out[..., :3].astype(float)
+WAIST = 0.64  # fraction of figure height where the torso meets the legs
+
+
+def scale_to_height(rgba, height):
+    img = Image.fromarray(rgba)
+    width = max(1, round(img.width * height / img.height))
+    return np.asarray(img.resize((width, height), Image.NEAREST))
+
+
+def regions(rgba):
+    """Masks for hair, skin, shirt and trousers on a V2 movement frame, using colour plus height bands."""
+    rgb = rgba[..., :3].astype(float)
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-    alpha = out[..., 3] > 0
+    alpha = rgba[..., 3] > 0
     lum = rgb.mean(axis=2)
     mx, mn = rgb.max(axis=2), rgb.min(axis=2)
-    shirt = alpha & (mn > 150) & (mx - mn < 60)
-    skin = alpha & (r > 150) & (r - b > 55) & (g > 80)
-    hair = alpha & (lum > 28) & (lum < 95) & (b >= r) & (mx - mn < 45)
-    if variant['shirt'] is not None:
-        shade = (lum / 245.0)[..., None]
-        rgb[shirt] = (np.array(variant['shirt']) * shade)[shirt]
-    rgb[skin] = rgb[skin] * variant['skin']
-    if variant['hair'] is not None:
-        shade = (lum / 60.0)[..., None]
-        rgb[hair] = (np.array(variant['hair']) * shade)[hair]
-    out[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    ys = np.arange(rgba.shape[0])[:, None] / rgba.shape[0]
+    dark = alpha & (lum > 26) & (lum < 110) & (b >= r - 5)
+    return {
+        'hair': dark & (ys < 0.45) & (mx - mn < 60),
+        'skin': alpha & (r > 140) & (r - b > 50) & (g > 70),
+        'shirt': alpha & (mn > 105) & (lum > 125) & (mx - mn < 70) & (ys > 0.35) & ~((r > 140) & (r - b > 50)),
+        'pants': dark & (ys > WAIST - 0.04),
+    }
+
+
+def sample(fig, x0, x1, y0, y1, mask=None):
+    """Median colour of the opaque pixels in a box given as fractions of the figure."""
+    h, w = fig.shape[:2]
+    box = fig[int(y0 * h):max(int(y1 * h), int(y0 * h) + 1), int(x0 * w):max(int(x1 * w), int(x0 * w) + 1)]
+    px = box[box[..., 3] > 0][:, :3].astype(float)
+    if mask is not None:
+        px = px[mask(px)] if mask(px).any() else px
+    return np.median(px, axis=0) if len(px) else np.array([128, 128, 128])
+
+
+def outfit_palette(fig):
+    not_outline = lambda px: px.mean(axis=1) > 30
+    skinny = lambda px: (px[:, 0] - px[:, 2] > 50) & (px[:, 0] > 140)
+    return {
+        'hair': sample(fig, 0.3, 0.7, 0.02, 0.1, not_outline),
+        'skin': sample(fig, 0.3, 0.7, 0.2, 0.32, skinny),
+        'top': sample(fig, 0.15, 0.32, 0.45, 0.6, not_outline),
+        'pants': sample(fig, 0.3, 0.7, 0.72, 0.85, not_outline),
+    }
+
+
+def tint(rgb, mask, colour, reference):
+    """Recolour masked pixels to `colour`, keeping their light and shade relative to `reference` luminance."""
+    lum = rgb.mean(axis=2)
+    shade = np.clip(lum / max(reference, 1), 0.4, 1.6)[..., None]
+    rgb[mask] = np.clip(np.asarray(colour, float) * shade, 0, 255)[mask]
+
+
+def dress(frame, pal, head, base_skin):
+    """Recolour a movement frame (side or back view) to a cast member's outfit, adding hijab or long hair."""
+    out = frame.copy()
+    rgb = out[..., :3].astype(float)
+    m = regions(out)
+    lum = rgb.mean(axis=2)
+    ref = lambda mask, fallback: float(lum[mask].mean()) if mask.any() else fallback
+    hair_ref, shirt_ref, pants_ref = ref(m['hair'], 55), ref(m['shirt'], 220), ref(m['pants'], 60)
+    tint(rgb, m['shirt'], pal['top'], shirt_ref)
+    tint(rgb, m['pants'], pal['pants'], pants_ref)
+    rgb[m['skin']] = np.clip(rgb[m['skin']] * (pal['skin'] / np.maximum(base_skin, 1)), 0, 255)
+    cover = pal['hair']
+    if head == 'hijab':
+        cover = pal['top'] if pal['top'].mean() < 110 else pal['hair']
+    tint(rgb, m['hair'], cover, hair_ref)
+    if head in ('hijab', 'long') and m['hair'].any():
+        # Drape below the hairline: the fabric (or hair) falls over the neck and onto the shoulders.
+        rows = np.where(m['hair'].any(axis=1))[0]
+        bottom, h = rows[-1], out.shape[0]
+        cols = np.where(m['hair'][max(rows[0], bottom - 4):bottom + 1].any(axis=0))[0]
+        if len(cols):
+            left, right = cols[0], cols[-1]
+            depth = int(h * (0.17 if head == 'hijab' else 0.1))
+            for y in range(bottom + 1, min(h, bottom + 1 + depth)):
+                shrink = 0 if head == 'hijab' else int((y - bottom) * 0.4)
+                band = slice(left + shrink, right + 1 - shrink)
+                drape = (out[y, band, 3] > 0) & ~m['skin'][y, band] if head == 'long' else out[y, band, 3] > 0
+                seg = rgb[y, band]
+                seg[drape] = np.clip(np.asarray(cover, float) * 0.95, 0, 255)
+                rgb[y, band] = seg
+    out[..., :3] = rgb.astype(np.uint8)
     return out
+
+
+def front_walk(walk, upper_src):
+    """Front walking frame: the cast figure's head and torso over the movement frame's legs."""
+    h, w = walk.shape[:2]
+    up = upper_src[:int(upper_src.shape[0] * WAIST)]
+    uh, uw = up.shape[:2]
+    cut = int(h * WAIST)
+    top = max(0, uh - cut)  # grow upwards if the cast figure's torso is taller than the frame's
+    width = max(w, uw)
+    out = np.zeros((h + top, width, 4), np.uint8)
+    lx = (width - w) // 2
+    out[top + cut:, lx:lx + w] = walk[cut:]
+    ux, uy = (width - uw) // 2, top + cut - uh
+    solid = up[..., 3] > 0
+    out[uy:uy + uh, ux:ux + uw][solid] = up[solid]
+    return out
+
+
+def key_out(rgb, bg, soft=110):
+    """Make a flat background transparent; edge pixels get partial alpha and are un-blended from the background."""
+    rgb = rgb.astype(float)
+    bg = np.asarray(bg, float)
+    alpha = np.clip(np.abs(rgb - bg).sum(axis=2) / soft, 0, 1)
+    colour = np.where(alpha[..., None] > 0, (rgb - bg * (1 - alpha[..., None])) / np.maximum(alpha[..., None], 1e-3), 0)
+    out = np.zeros(rgb.shape[:2] + (4,), np.uint8)
+    out[..., :3] = np.clip(colour, 0, 255)
+    out[..., 3] = (alpha * 255).astype(np.uint8)
+    return out
+
+
+def build_logo():
+    """Symbol and wordmark from the dark-background version, plus the 48px application icon."""
+    sheet = np.asarray(Image.open(SRC / 'Ruang Logo Concept.png').convert('RGB'))
+    dark_bg = np.median(sheet[700:720, 530:560].reshape(-1, 3), axis=0)
+    Image.fromarray(key_out(sheet[748:868, 582:694], dark_bg)).save(OUT / 'logo-symbol.png')
+    Image.fromarray(key_out(sheet[768:822, 726:970], dark_bg)).save(OUT / 'logo-wordmark.png')
+    # The icon's symbol is the same cream as the page, so only the page outside the rounded square is removed.
+    icon = sheet[738:864, 1072:1200]
+    light_bg = np.median(sheet[730:736, 1060:1070].reshape(-1, 3), axis=0)
+    rgba = np.dstack([icon, np.full(icon.shape[:2], 255, np.uint8)])
+    diff = np.abs(icon.astype(int) - light_bg).sum(axis=2)
+    h, w = diff.shape
+    outside = np.zeros((h, w), bool)
+    queue = deque([(y, x) for y in range(h) for x in (0, w - 1)] + [(y, x) for x in range(w) for y in (0, h - 1)])
+    while queue:
+        y, x = queue.popleft()
+        if outside[y, x] or diff[y, x] > 90:
+            continue
+        outside[y, x] = True
+        queue.extend((y + dy, x + dx) for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= y + dy < h and 0 <= x + dx < w)
+    rgba[outside, 3] = 0
+    Image.fromarray(rgba).save(OUT / 'app-icon.png')
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    build_logo()
     shutil.copyfile(SRC / 'RUANG V2 Master Test Office Composition.png', OUT / 'office.png')
 
     sheet = Image.open(SRC / 'RUANG V2 Employee Movement System.png').convert('RGB')
@@ -152,13 +278,24 @@ def main():
     wu = figs['walk_up']
     rows = [figs['idle'], [up] * 4, [left] * 4, [mirror(left)] * 4,
             figs['walk_down'], [wu[0], wu[3], wu[2], wu[3]], figs['walk_left'], [mirror(f) for f in figs['walk_left']]]
-    fw = max(f.shape[1] for row in rows for f in row) + 2
-    fh = max(f.shape[0] for row in rows for f in row) + 2
-    for index, variant in enumerate(VARIANTS):
+    character_sheet = Image.open(SRC / 'RUANG V2 Master Employee Character System.png').convert('RGB')
+    outfits = cut_figures(character_sheet, OUTFIT_ROW)
+    assert len(outfits) >= 10, f'outfit row: expected at least 10 figures, found {len(outfits)}'
+    base_skin = np.median(rows[0][0][regions(rows[0][0])['skin']][:, :3].astype(float), axis=0)
+    sheets = []
+    for member in CAST:
+        figure = scale_to_height(outfits[member['outfit']], rows[0][0].shape[0])
+        pal = outfit_palette(figure)
+        dressed = [[dress(f, pal, member['head'], base_skin) for f in row] for row in rows]
+        dressed[0] = [figure] * 4                                   # idle facing the camera: the cast figure itself
+        dressed[4] = [front_walk(f, figure) for f in dressed[4]]    # walking towards the camera
+        sheets.append(dressed)
+    fw = max(f.shape[1] for sheet in sheets for row in sheet for f in row) + 2
+    fh = max(f.shape[0] for sheet in sheets for row in sheet for f in row) + 2
+    for index, sheet in enumerate(sheets):
         canvas = np.zeros((fh * 8, fw * 4, 4), np.uint8)
-        for ry, row in enumerate(rows):
+        for ry, row in enumerate(sheet):
             for cx, fig in enumerate(row):
-                fig = recolor(fig, variant)
                 h, w = fig.shape[:2]
                 x = cx * fw + (fw - w) // 2
                 y = ry * fh + fh - h  # bottom-centre anchor
@@ -178,11 +315,11 @@ def main():
     meta = json.dumps({
         'frameWidth': fw, 'frameHeight': fh, 'columns': 4,
         'rows': ['idle_down', 'idle_up', 'idle_left', 'idle_right', 'walk_down', 'walk_up', 'walk_left', 'walk_right'],
-        'variants': len(VARIANTS), 'iconSize': [ICON_W, y1 - y0], 'icons': list(ICON_TILES)}, indent=2)
+        'variants': len(CAST), 'iconSize': [ICON_W, y1 - y0], 'icons': list(ICON_TILES)}, indent=2)
     (OUT / 'sprites.json').write_text(meta)
     # Loaded as a plain script so the app needs no fetch (CSP and the Electron protocol stay simple).
     (OUT / 'sprites.js').write_text(f'window.V2SpriteMeta={meta};\n')
-    print(f'frames {fw}x{fh}, {len(VARIANTS)} employee sheets, {len(ICON_TILES)} icons -> {OUT}')
+    print(f'frames {fw}x{fh}, {len(CAST)} employee sheets, {len(ICON_TILES)} icons -> {OUT}')
 
 
 if __name__ == '__main__':

@@ -41,7 +41,7 @@ app.whenReady().then(async()=>{
   const connections=new Connections({root:path.join(dataRoot,'ai-connections'),safeStorage});
   try{workspace.select(JSON.parse(fs.readFileSync(settingsFile,'utf8')).path)}catch{}
   Menu.setApplicationMenu(null);
-  win=new BrowserWindow({width:1500,height:1000,minWidth:850,minHeight:650,title:'Ruang',backgroundColor:'#101d20',show:!smoke,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+  win=new BrowserWindow({width:1500,height:1000,minWidth:850,minHeight:650,title:'Ruang',icon:path.join(appRoot,'dist','v2','app-icon.png'),backgroundColor:'#101d20',show:!smoke,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('render-process-gone',(_event,details)=>record('Renderer stopped: '+JSON.stringify(details)));
   win.webContents.on('did-fail-load',(_event,code,description)=>record(`Load failed: ${code} ${description}`));

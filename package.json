@@ -1,7 +1,7 @@
 {
   "name": "ai-office-desktop",
   "productName": "Ruang",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "description": "Ruang â€” a local AI workspace with a walking pixel office",
   "main": "desktop/main.cjs",
