@@ -1,13 +1,13 @@
 {
   "name": "ai-office-desktop",
   "productName": "Ruang",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
   "description": "Ruang, a local AI workspace with a walking pixel office",
   "main": "desktop/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test desktop/core.test.cjs desktop/model-gateway.test.cjs desktop/model-stream.test.cjs desktop/web-shell.test.cjs desktop/task-runner.test.cjs desktop/artifact-store.test.cjs desktop/workspace.test.cjs desktop/office-engine.test.cjs desktop/connections.test.cjs desktop/code-documents.test.cjs",
+    "test": "node --test desktop/core.test.cjs desktop/model-gateway.test.cjs desktop/model-stream.test.cjs desktop/web-shell.test.cjs desktop/task-runner.test.cjs desktop/harness.test.cjs desktop/artifact-store.test.cjs desktop/workspace.test.cjs desktop/office-engine.test.cjs desktop/connections.test.cjs desktop/code-documents.test.cjs",
     "export-assets": "node desktop/export-native-assets.cjs",
     "package": "node desktop/package.cjs",
     "build:editor": "node desktop/build-editor.cjs"

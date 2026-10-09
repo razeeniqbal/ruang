@@ -7,8 +7,8 @@ fs.mkdirSync(target,{recursive:true});
 fs.cpSync(path.join(root,'node_modules','electron','dist'),target,{recursive:true});
 fs.renameSync(path.join(target,'electron.exe'),path.join(target,'Ruang.exe'));
 const dest=path.join(target,'resources','app');fs.mkdirSync(dest,{recursive:true});
-// Ship the app folders without tests or local preview helpers.
-const skip=file=>/\.test\.cjs$/.test(file)||/[\\/]_test\.html$|[\\/]_raf-shim\.js$/.test(file);
+// Ship the app folders without tests.
+const skip=file=>/\.test\.cjs$/.test(file);
 for(const dir of ['dist','desktop'])fs.cpSync(path.join(root,dir),path.join(dest,dir),{recursive:true,filter:src=>!skip(src)});
 // Production dependencies only (for example the Anthropic SDK used by the model gateway), as npm resolves them.
 const listed=execFileSync(process.platform==='win32'?'npm.cmd':'npm',['ls','--omit=dev','--all','--parseable'],{cwd:root,encoding:'utf8',shell:process.platform==='win32'}).split(/\r?\n/).filter(Boolean);

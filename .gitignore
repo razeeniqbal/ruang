@@ -5,5 +5,3 @@ smoke-data/
 desktop-smoke-result.json
 
 .claude/
-dist/_test.html
-dist/_raf-shim.js
