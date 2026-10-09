@@ -5,6 +5,9 @@ const {Workspace}=require('./workspace.cjs');
 const {Connections,provider}=require('./connections.cjs');
 const {ModelGateway}=require('./model-gateway.cjs');
 const {ArtifactStore}=require('./artifact-store.cjs');
+const {Harness}=require('./harness/harness.cjs');
+const {RunStore}=require('./harness/run-store.cjs');
+const {DEFAULT_LIMITS}=require('./harness/limits.cjs');
 const {assetPath}=require('./asset-path.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'ruang',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 const workspace=new Workspace();
@@ -72,6 +75,39 @@ app.whenReady().then(async()=>{
   handle('artifact:save',record=>artifacts.save({id:record?.id,format:record?.format,content:record?.content}));
   handle('artifact:read',id=>artifacts.read(id));
   handle('artifact:exists',id=>artifacts.exists(id));
+  // AI harness: tasks run here, between the employee and the model, approved files and outputs.
+  // Before any file is read, the person approves sending exactly those files to the provider in a native
+  // dialog the page cannot answer for them.
+  const runs=new RunStore({root:path.join(dataRoot,'runs')});runs.recoverInterrupted();
+  const kb=bytes=>bytes<1024?`${bytes} bytes`:`${Math.round(bytes/102.4)/10} KB`;
+  const confirmDisclosure=async({employee,providerName,model,task,root,files})=>{
+    if(win.isDestroyed())return false;
+    const r=await dialog.showMessageBox(win,{type:'question',title:'Send files to the model',noLink:true,defaultId:0,cancelId:0,buttons:['Cancel task','Send files'],
+      message:`${employee} will send ${files.length===1?'1 file':`${files.length} files`} to ${providerName}${model?` (${model})`:''}.`,
+      detail:`Task: ${task}\nFolder: ${root}\n\n${files.map(f=>`• ${f.path} (${kb(f.bytes)})`).join('\n')}\n\nOnly these files are read, and only for this task. Their contents are sent to ${providerName} to do the work.`});
+    return r.response===1;
+  };
+  const harness=new Harness({gateway:models,artifacts,runs,workspace,confirmDisclosure});
+  const executions=new Map();
+  handle('harness:execute',async(id,input)=>{
+    if(typeof id!=='string'||!/^[\w-]{8,64}$/.test(id)||executions.has(id))throw Error('Invalid run request.');
+    const controller=new AbortController();executions.set(id,controller);
+    try{return await harness.execute(input,{signal:controller.signal,onEvent:event=>{if(!win.isDestroyed())win.webContents.send('harness:event',id,event)}})}
+    finally{executions.delete(id)}
+  });
+  handle('harness:cancel',id=>{executions.get(id)?.abort();return true});
+  handle('harness:decide',(approvalId,decision)=>harness.decide(approvalId,decision));
+  handle('harness:run',runId=>harness.runRecord(runId));
+  handle('harness:choose-context',async()=>{
+    if(!workspace.root)throw Error('Open a project folder under Files first, then choose files from it.');
+    const result=await dialog.showOpenDialog(win,{title:'Choose files for this task',defaultPath:workspace.root,properties:['openFile','multiSelections']});
+    if(result.canceled||!result.filePaths.length)return null;
+    if(result.filePaths.length>DEFAULT_LIMITS.maxContextFiles)throw Error(`Choose at most ${DEFAULT_LIMITS.maxContextFiles} files for one task.`);
+    const files=result.filePaths.map(file=>{const rel=path.relative(workspace.root,fs.realpathSync(file));
+      if(!rel||rel.startsWith('..')||path.isAbsolute(rel))throw Error('Choose files inside the open project folder.');
+      workspace.describe(rel);return rel.split(path.sep).join('/')});
+    return {root:workspace.root,files};
+  });
   handle('connections:list',()=>connections.list());
   handle('connections:login',id=>connections.login(id));
   handle('connections:install',id=>connections.install(id));
@@ -103,15 +139,18 @@ app.whenReady().then(async()=>{
   record('Interface loaded');
   if(smoke){
     try{
-      const check=await win.webContents.executeJavaScript(`({title:document.title,office:!!document.querySelector('#office-canvas'),desktop:typeof window.desktop?.chooseFolder==='function',node:typeof require,files:document.body.innerText.includes('Files')})`);
-      if(!check.office||!check.desktop||check.node!=='undefined'||!check.files)throw Error(JSON.stringify(check));
+      const check=await win.webContents.executeJavaScript(`({title:document.title,office:!!document.querySelector('#office-canvas'),desktop:typeof window.desktop?.chooseFolder==='function',node:typeof require,files:document.body.innerText.includes('Files'),harnessBridge:typeof window.desktop?.harness?.execute==='function'&&window.RuangHarness?.available()===true})`);
+      if(!check.office||!check.desktop||check.node!=='undefined'||!check.files||!check.harnessBridge)throw Error(JSON.stringify(check));
       const info=await win.webContents.executeJavaScript('window.desktop.info()');
       const connectionCheck=await win.webContents.executeJavaScript(`(async()=>{const rows=await window.desktop.connections.list();view='Settings';render();return {providers:rows.map(r=>r.id),settings:document.body.innerText.includes('AI Connections'),keysExposed:rows.some(r=>Object.hasOwn(r,'secret')),keyInputInPage:!!document.querySelector('#connection-secret')}})()`);
       if(connectionCheck.providers.length!==3||!connectionCheck.settings||connectionCheck.keysExposed||connectionCheck.keyInputInPage)throw Error('Connection smoke check failed.');
+      // Harness round trip through IPC: a task whose employee has no model fails clearly and leaves a readable run record.
+      const harnessCheck=await win.webContents.executeJavaScript(`(async()=>{const events=[];const out=await window.RuangHarness.execute({task:{id:'task-smoke',title:'Smoke check'},employee:{id:'agent-smoke',name:'Smoke',model:null}},{onEvent:e=>events.push(e.type)});const run=await window.RuangHarness.run(out.run.id);return {status:out.status,code:out.error?.code,events,stored:run.status,trace:run.trace.length}})()`);
+      if(harnessCheck.status!=='FAILED'||harnessCheck.code!=='NOT_CONNECTED'||!harnessCheck.events.includes('run.failed')||harnessCheck.stored!=='FAILED')throw Error('Harness smoke check failed: '+JSON.stringify(harnessCheck));
       const codeCheck=await win.webContents.executeJavaScript(`(async()=>{view='Code';render();const monaco=window.RuangMonaco;if(!monaco)throw Error('Monaco missing');const uri=monaco.Uri.parse('inmemory://smoke/check.ts');const model=monaco.editor.createModel('const answer: number = 42;','typescript',uri);const instance=monaco.editor.create(document.querySelector('#code-editor-host'),{model});const worker=await monaco.typescript.getTypeScriptWorker();const client=await worker(uri);const diagnostics=await client.getSyntacticDiagnostics(uri.toString());const result={explorer:document.body.innerText.includes('EXPLORER'),editor:!!document.querySelector('.monaco-editor'),worker:diagnostics.length===0};instance.dispose();model.dispose();return result})()`);
       if(!codeCheck.explorer||!codeCheck.editor||!codeCheck.worker)throw Error('Code workspace smoke check failed.');
       if(migrationTest){const preserved=await win.webContents.executeJavaScript("JSON.parse(localStorage.getItem('ai-office-v1')).migrationProbe==='preserved'");if(!preserved)throw Error('Legacy workspace migration failed.');codeCheck.migration=true}
-      fs.writeFileSync(path.join(appRoot,'desktop-smoke-result.json'),JSON.stringify({passed:true,...check,connections:connectionCheck,code:codeCheck,version:info.version},null,2));
+      fs.writeFileSync(path.join(appRoot,'desktop-smoke-result.json'),JSON.stringify({passed:true,...check,connections:connectionCheck,harness:harnessCheck,code:codeCheck,version:info.version},null,2));
       app.exit(0);
     }catch(error){fs.writeFileSync(path.join(appRoot,'desktop-smoke-result.json'),JSON.stringify({passed:false,error:error.message}));app.exit(1)}
   }

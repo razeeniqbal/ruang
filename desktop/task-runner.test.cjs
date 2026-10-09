@@ -2,6 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const Core=require('../dist/core.js');
 const {createTaskRunner,INTERRUPTED}=require('../dist/task-runner.js');
 const {createArtifactClient}=require('../dist/artifact-client.js');
+const {Harness}=require('./harness/harness.cjs');
 
 const QUESTION='Write a short comparison of PostgreSQL JSON and JSONB. Include when I should use each.';
 const REPLY='## JSON vs JSONB\nJSONB is stored in a decomposed binary form.';
@@ -12,13 +13,15 @@ function setup({reply=REPLY,fail=null,provider='anthropic',delay=0,store=fakeSto
   const state=Core.migrate({agents:[{name:'Aisha',role:'Data analyst',provider:'Anthropic'},{name:'Rakan',role:'Engineer',provider:'Unconfigured'}],projects:[{id:'p1',name:'Data Pipeline',goal:'Move reporting to Postgres',status:'Draft',step:0,tasks:[]}]});
   state.agents[0].model={provider,model:null};
   let clock=1000;const calls=[],seen=[],phases=[];
-  const gateway={clean:e=>String(e.message||e),stream:async(request,{onDelta,signal}={})=>{calls.push({request,signal});seen.push({status:state.tasks[0].status,agent:Core.agentStatus(state,'agent-1',{now:clock})});
+  const gateway={stream:async(request,{onDelta,signal}={})=>{calls.push({request,signal});seen.push({status:state.tasks[0].status,agent:Core.agentStatus(state,'agent-1',{now:clock})});
     if(delay)await new Promise((resolve,reject)=>{const t=setTimeout(resolve,delay);signal?.addEventListener('abort',()=>{clearTimeout(t);reject(Object.assign(Error('You stopped this request.'),{code:'CANCELLED'}))},{once:true})});
     if(fail)throw Object.assign(Error(fail),{code:'AUTH'});
     for(const p of pieces||[reply])onDelta?.(p);
     return {text:reply,model:'claude-opus-5-5',provider:'anthropic',usage:{inputTokens:120,outputTokens:340},durationMs:2100}}};
   const artifacts=createArtifactClient({bridge:()=>store.bridge});
-  const runner=createTaskRunner({getState:()=>state,gateway,artifacts,Core,now:()=>clock,onChange:()=>{const t=state.tasks[0];if(t)phases.push(`${t.status}/${t.metadata?.phase||''}`)}});
+  // The real harness, with a stand-in model and store: tasks run exactly as in the app, without a network.
+  const harness=new Harness({gateway,artifacts:{save:record=>store.bridge.save(record)}});
+  const runner=createTaskRunner({getState:()=>state,harness,Core,now:()=>clock,onChange:()=>{const t=state.tasks[0];if(t)phases.push(`${t.status}/${t.metadata?.phase||''}`)}});
   const add=(fields={})=>{const t=Core.createTask({title:QUESTION,assignedAgent:'agent-1',activity:'writing',createdAt:clock,...fields});state.tasks.push(t);return t};
   return {state,runner,calls,seen,phases,add,gateway,store,artifacts,tick:ms=>{clock+=ms}};
 }

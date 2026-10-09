@@ -30,3 +30,8 @@
 .ow-msgs .them.streaming::after{content:'';display:inline-block;width:6px;height:12px;margin-left:2px;background:#a8b4be;vertical-align:-1px;animation:ow-dot 1s infinite}
 .ow-msgs .them.demo{border:1px dashed #42505b;background:transparent;color:#a8b4be}
 .ow-cancel{display:block;margin:0 0 10px auto;font-size:12px;padding:5px 10px;background:transparent;border:1px solid #6b4b47;color:#e8c3bd}.ow-cancel:hover{background:#3a2224}
+.ctx-files{border:1px solid #31404d;border-radius:8px;padding:8px 12px 12px;margin:12px 0 4px}.ctx-files legend{padding:0 4px;color:#d7dee4;font-size:13px}.ctx-files p{margin:4px 0 8px}
+.ctx-list{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px;font-size:12.5px}.ctx-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#101a24;border-radius:6px;padding:4px 8px;overflow-wrap:anywhere}.ctx-error{color:#e8c3bd}
+.run-facts{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:13px;margin:8px 0 4px}.run-facts dt{color:#90a0af}.run-facts dd{margin:0;overflow-wrap:anywhere}
+#dialog h3{font-size:13px;margin:14px 0 6px;color:#d7dee4}.run-list{margin:0;padding-left:18px;font-size:12.5px;display:grid;gap:3px;overflow-wrap:anywhere}
+.run-timeline{max-height:32vh;overflow:auto}.run-timeline li{grid-template-columns:64px 1fr}.run-error{border-color:#6b4b47}

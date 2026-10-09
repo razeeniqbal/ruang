@@ -54,3 +54,39 @@ test('OpenAI and Google adapters need a model name and map replies',async()=>{
   assert.equal(g.text,'Yo');assert.match(url,/models\/g1:generateContent$/);
   await assert.rejects(google.generate({apiKey:'k',model:'g1/../x',system:'S',messages:convo}),/not valid/);
 });
+
+// ---- Structured tool calls (used by the AI harness) ----------------------------------------------------
+const TOOLS=[{name:'read_context_file',description:'Read an approved file.',inputSchema:{type:'object',properties:{path:{type:'string'}},required:['path']}}];
+const toolTurn=[{role:'user',content:'Analyse the files.'},{role:'assistant',content:'',toolCalls:[{id:'tu_1',name:'read_context_file',input:{path:'a.csv'}}]},{role:'tool',toolCallId:'tu_1',name:'read_context_file',content:'x,y'}];
+
+test('tool requests: only tasks may define tools, and tool turns must match the defined tools',()=>{
+  assert.throws(()=>validate({provider:'anthropic',messages:convo,tools:TOOLS}),/only available to tasks/);
+  assert.throws(()=>validate({provider:'anthropic',policy:'task',messages:toolTurn}),/Invalid conversation message/,'tool turns need tool definitions');
+  assert.throws(()=>validate({provider:'anthropic',policy:'task',messages:convo,tools:[{name:'Bad Name',description:'d',inputSchema:{}}]}),/Invalid tool definition/);
+  const ok=validate({provider:'anthropic',policy:'task',messages:toolTurn,tools:TOOLS});
+  assert.equal(ok.messages.at(-1).role,'tool');assert.deepEqual(ok.messages[1].toolCalls,[{id:'tu_1',name:'read_context_file',input:{path:'a.csv'}}]);
+  assert.throws(()=>validate({provider:'anthropic',policy:'task',messages:toolTurn.slice(0,2),tools:TOOLS}),/start and end with your message/);
+  // Tasks have room for approved file context; chat keeps its smaller limit.
+  assert.equal(validate({provider:'anthropic',policy:'task',messages:[{role:'user',content:'x'.repeat(100000)}]}).messages.length,1);
+});
+
+test('a reply with tool calls is normalised, and providers without tool support are never sent tools',async()=>{
+  const gw=new ModelGateway({connections:fakeConnections(),load:name=>name==='anthropic'?{supportsTools:true,generate:async args=>{if(!args.tools)return {text:'Done',usage:{}};assert.deepEqual(args.tools,TOOLS);return {text:'',toolCalls:[{id:'tu_2',name:'read_context_file',input:{path:'b.csv'}}],usage:{}}}}:{generate:async()=>({text:'x'})}});
+  const out=await gw.generate({provider:'anthropic',policy:'task',messages:convo,tools:TOOLS});
+  assert.equal(out.type,'tool_calls');assert.equal(out.text,'');assert.deepEqual(out.toolCalls,[{id:'tu_2',name:'read_context_file',input:{path:'b.csv'}}]);
+  assert.deepEqual(gw.capabilities('anthropic'),{tools:true});assert.deepEqual(gw.capabilities('openai'),{tools:false});assert.deepEqual(gw.capabilities('nope'),{tools:false});
+  const plain=await gw.generate({provider:'anthropic',policy:'task',messages:convo});assert.equal(plain.type,'final');
+  const noTools=new ModelGateway({connections:fakeConnections({codex:{enabled:true,mode:'api',secret:'e'}}),load:()=>({generate:async()=>({text:'x'})})});
+  await assert.rejects(noTools.generate({provider:'openai',model:'m',policy:'task',messages:convo,tools:TOOLS}),/cannot use Ruang tools/);
+});
+
+test('Anthropic adapter: tool definitions, tool_use and tool_result blocks, and tool calls in the reply',async()=>{
+  let sent;class Fake{constructor(){this.beta={messages:{create:async r=>{sent=r;return {model:r.model,stop_reason:'tool_use',usage:{input_tokens:1,output_tokens:1},
+    content:[{type:'thinking',thinking:'private'},{type:'text',text:'Reading it.'},{type:'tool_use',id:'tu_3',name:'read_context_file',input:{path:'c.csv'}}]}}}}}}
+  const out=await anthropic.generate({apiKey:'k',system:'S',messages:[...toolTurn,{role:'tool',toolCallId:'tu_9',name:'read_context_file',content:'denied',isError:true}],tools:TOOLS,Client:Fake});
+  assert.deepEqual(sent.tools,[{name:'read_context_file',description:'Read an approved file.',input_schema:TOOLS[0].inputSchema}]);
+  assert.deepEqual(sent.messages[1],{role:'assistant',content:[{type:'tool_use',id:'tu_1',name:'read_context_file',input:{path:'a.csv'}}]});
+  assert.deepEqual(sent.messages[2],{role:'user',content:[{type:'tool_result',tool_use_id:'tu_1',content:'x,y'},{type:'tool_result',tool_use_id:'tu_9',content:'denied',is_error:true}]},'consecutive results share one turn');
+  assert.equal(out.text,'Reading it.');assert.deepEqual(out.toolCalls,[{id:'tu_3',name:'read_context_file',input:{path:'c.csv'}}]);
+  assert.ok(!JSON.stringify(out).includes('private'),'reasoning blocks are dropped');
+});

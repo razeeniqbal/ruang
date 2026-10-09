@@ -1,7 +1,7 @@
 # Manual tests with a real provider key
 
 Automated tests cover the gateway, streaming, storage and task runner with stand-ins. These checks need the
-desktop app and a real key. Use version 0.13.0 or later.
+desktop app and a real key. Use version 0.13.0 or later (F to H need 0.14.0).
 
 ## Set up
 
@@ -47,3 +47,27 @@ stops it: the task becomes **Cancelled** and no output is saved.
 Complete a task, close Ruang, open it again. Expect: the task is still **Completed**, the Inbox item still opens the
 full output (read from the file), and activity and usage are still there. A task that was running when Ruang closed
 shows as **Failed** with "Ruang closed while this task was running", and can be tried again.
+
+## F. Task with approved files (0.14)
+
+Open a project folder under **Files** that has two small CSV files. Assign Aisha: "Analyse these production files.
+Compare the months." Under **Files for this task**, choose both CSVs.
+
+Expect: a native dialog lists exactly the two files with their sizes, Anthropic and the model. **Cancel task**
+cancels it (nothing is sent). Assign again and choose **Send files**: the employee shows **Reading files**, then
+Thinking and Writing. The Inbox shows **Ready for review**; the review shows "Created by Aisha", the model,
+"2 context files", "1 model call" and the files used. **View run** shows the context, any tools used, usage and a
+timeline with "Context approved: 2 files", "Read ...", "Model request started" and "Task completed".
+
+## G. Ask before reading
+
+In Employee details set **Reading files you choose for a task** to **Ask me**, then repeat F with a large file
+(over 200 KB) plus a small one. If the model asks to read the large file, the employee shows **Needs approval**
+and the Inbox has an approval. Approve: the task continues and completes. Set the option to **Not allowed**: the
+assign dialog says the employee cannot read files, and a task with files fails without any dialog.
+
+## H. Cancel and interrupted runs
+
+Cancel a running task with files: it becomes **Cancelled**, no output appears, and **View run** ends with the
+cancellation. Close Ruang while a task is running and reopen: the task is **Failed** (interrupted) and its run
+shows "Ruang closed while this run was in progress."

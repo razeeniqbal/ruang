@@ -31,8 +31,10 @@
     return {id:fields.id||newId('task'),title:String(fields.title||'Untitled task'),description:fields.description||'',projectId:fields.projectId??null,
       assignedAgent:fields.assignedAgent??null,createdBy:fields.createdBy||'user',priority:fields.priority||'normal',status:fields.status||(fields.assignedAgent?'QUEUED':'DRAFT'),
       activity:ACTIVITIES.includes(fields.activity)?fields.activity:'coding',createdAt:now,startedAt:fields.startedAt??null,completedAt:fields.completedAt??null,
-      artifacts:fields.artifacts||[],dependencies:fields.dependencies||[],approvalRequirements:fields.approvalRequirements||[],error:fields.error??null,metadata:fields.metadata||{}};
+      artifacts:fields.artifacts||[],dependencies:fields.dependencies||[],approvalRequirements:fields.approvalRequirements||[],error:fields.error??null,metadata:fields.metadata||{},context:taskContext(fields.context)};
   }
+  // Files the person approved for this task: paths relative to the project folder chosen at the time.
+  function taskContext(c){const files=Array.isArray(c?.files)?c.files.filter(f=>typeof f==='string'&&f).slice(0,20):[];return files.length?{root:typeof c.root==='string'?c.root:null,files}:null}
   function canTransition(from,to){return (TASK_TRANSITIONS[from]||[]).includes(to)}
   // Returns a new task; throws on an illegal move so callers cannot silently corrupt state.
   function transitionTask(task,to,{at=Date.now(),error=null}={}){
@@ -80,11 +82,17 @@
   }
 
   // Status vocabulary shown in the office and panels, with how loudly each should be shown.
-  const STATUS_PROMINENCE=Object.freeze({IDLE:'none',WORKING:'subtle',THINKING:'subtle',RESEARCHING:'subtle',TOOL_RUNNING:'subtle',COLLABORATING:'subtle',
+  const STATUS_PROMINENCE=Object.freeze({IDLE:'none',WORKING:'subtle',THINKING:'subtle',READING:'subtle',RESEARCHING:'subtle',TOOL_RUNNING:'subtle',COLLABORATING:'subtle',
     WAITING:'visible',NEEDS_APPROVAL:'prominent',BLOCKED:'prominent',ERROR:'prominent',COMPLETE:'temporary',OFFLINE:'visible'});
-  const STATUS_LABELS=Object.freeze({IDLE:'Idle',WORKING:'Working',THINKING:'Thinking',RESEARCHING:'Researching',TOOL_RUNNING:'Using a tool',COLLABORATING:'Collaborating',
+  const STATUS_LABELS=Object.freeze({IDLE:'Idle',WORKING:'Working',THINKING:'Thinking',READING:'Reading files',RESEARCHING:'Researching',TOOL_RUNNING:'Using a tool',COLLABORATING:'Collaborating',
     WAITING:'Waiting',NEEDS_APPROVAL:'Needs approval',BLOCKED:'Blocked',ERROR:'Error',COMPLETE:'Complete',OFFLINE:'Offline'});
   const ACTIVITY_STATUS={planning:'THINKING',research:'RESEARCHING',analysis:'WORKING',coding:'WORKING',writing:'WORKING',review:'WORKING',collaboration:'COLLABORATING',tool:'TOOL_RUNNING'};
+
+  // Who the employee is, in their own words: shared by chat and by the harness's employee instructions.
+  function identityPrompt(agent){
+    return [`You are ${agent.name}, the ${agent.role} on a small team working inside Ruang, a shared digital workspace where a person works with a team of AI employees.`,
+      agent.description,(agent.responsibilities||[]).length?'Your responsibilities:\n'+agent.responsibilities.map(r=>'- '+r).join('\n'):'',agent.instructions].filter(Boolean).join('\n\n');
+  }
 
   function currentTask(state,agentId){
     const mine=(state.tasks||[]).filter(t=>t.assignedAgent===agentId&&ACTIVE_TASK_STATES.has(t.status));
@@ -103,6 +111,8 @@
       if(task.status==='BLOCKED')return 'BLOCKED';
       if(task.status==='WAITING')return 'WAITING';
       if(task.status==='PLANNING'||(task.status==='RUNNING'&&task.metadata?.phase==='thinking'))return 'THINKING';
+      if(task.status==='RUNNING'&&task.metadata?.phase==='reading')return 'READING';
+      if(task.status==='RUNNING'&&task.metadata?.phase==='tool')return 'TOOL_RUNNING';
       return ACTIVITY_STATUS[task.activity]||'WORKING';// ASSIGNED means on the way to start this work
     }
     const recent=(state.tasks||[]).filter(t=>t.assignedAgent===agentId&&t.completedAt&&now-t.completedAt<completeFor).sort((a,b)=>b.completedAt-a.completedAt)[0];
@@ -213,7 +223,7 @@
   }
 
   const api={SCHEMA_VERSION,TASK_STATES,TASK_TRANSITIONS,ACTIVE_TASK_STATES,OPEN_TASK_STATES,ACTIVITIES,APPROVAL_STATES,AUTONOMY,PERMISSIONS,DEFAULT_PERMISSIONS,SENSITIVE,
-    STATUS_PROMINENCE,STATUS_LABELS,newId,createTask,canTransition,transitionTask,createApproval,decideApproval,permissionDecision,currentTask,nextQueuedTask,agentStatus,
+    STATUS_PROMINENCE,STATUS_LABELS,newId,createTask,taskContext,identityPrompt,canTransition,transitionTask,createApproval,decideApproval,permissionDecision,currentTask,nextQueuedTask,agentStatus,
     recordActivity,createArtifact,inboxItems,migrate,syncProjectApprovals};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RuangCore=api;
 })(typeof window!=='undefined'?window:globalThis);

@@ -28,6 +28,8 @@ class Workspace{
     const entries=fs.readdirSync(dir,{withFileTypes:true}).filter(e=>!e.isSymbolicLink()&&!ignored.has(e.name.toLowerCase())&&!e.name.toLowerCase().startsWith('.env')).sort((a,b)=>Number(b.isDirectory())-Number(a.isDirectory())||a.name.localeCompare(b.name));
     return {folder:this.info(),relative,entries:entries.slice(0,500).map(e=>({name:e.name,path:path.join(relative,e.name),directory:e.isDirectory(),editable:e.isFile()&&extensions.has(path.extname(e.name).toLowerCase())})),truncated:entries.length>500};
   }
+  // Name and size of an allowed file, without reading it (used to show what will be shared).
+  describe(relative){const file=this.resolve(relative);return {path:relative,bytes:fs.statSync(file).size}}
   read(relative){const file=this.resolve(relative),buffer=fs.readFileSync(file);if(buffer.length>MAX||buffer.includes(0))throw Error('This file is not a supported UTF-8 text file.');let content;try{content=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(buffer)}catch{throw Error('Only UTF-8 text files are supported.')}return {path:relative,content,hash:digest(buffer),version:this.version}}
   save({path:relative,content,hash,version}){
     if(version!==this.version)throw Error('The selected folder changed. Reopen the file.');
