@@ -1,0 +1,165 @@
+/* Ruang pixel theme. Loaded last: the whole app takes the look of the office art. Square pixel frames with
+   notched corners, bevelled buttons, the office palette and pixel fonts everywhere (SIL OFL, see fonts/). */
+@font-face{font-family:'Pixelify Sans';src:url('fonts/PixelifySans.ttf') format('truetype');font-weight:400 700;font-display:swap}
+@font-face{font-family:'VT323';src:url('fonts/VT323-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+
+:root{
+  --px:3px;
+  --ink:#0b1118;--panel:#1b2735;--panel-2:#22324330;--well:#101922;--hi:#3a5066;--lo:#0f1820;
+  --wall:#2a3a4c;--wood:#b8804a;--wood-hi:#d7a46a;--wood-lo:#7a5030;
+  --gold:#e5c77b;--gold-hi:#f6dfa0;--gold-lo:#a9883f;--cream:#f1e9d2;--text:#e9e3cf;--muted:#a3adb3;
+  --teal:#3d8f86;--green:#79c26a;--red:#d9574a;--amber:#e3a33c;--blue:#5fa8d3;
+  --notch:polygon(0 var(--px),var(--px) var(--px),var(--px) 0,calc(100% - var(--px)) 0,calc(100% - var(--px)) var(--px),100% var(--px),100% calc(100% - var(--px)),calc(100% - var(--px)) calc(100% - var(--px)),calc(100% - var(--px)) 100%,var(--px) 100%,var(--px) calc(100% - var(--px)),0 calc(100% - var(--px)));
+  --frame:inset 0 0 0 var(--px) var(--ink),inset calc(var(--px)*2) calc(var(--px)*2) 0 calc(var(--px)*-1) var(--hi),inset calc(var(--px)*-2) calc(var(--px)*-2) 0 calc(var(--px)*-1) var(--lo);
+  --display:'Pixelify Sans','VT323',monospace;--body:'VT323','Pixelify Sans',monospace;
+  font-family:var(--body);font-size:20px;line-height:1.15;color:var(--text);background:var(--ink);
+  font-size-adjust:.5;-webkit-font-smoothing:none;font-smooth:never;
+}
+*,*::before,*::after{border-radius:0!important}
+html,body{height:100%;overflow:hidden;background:var(--ink)}
+img,canvas,.pi{image-rendering:pixelated}
+::selection{background:var(--gold);color:var(--ink)}
+h1,h2,h3,legend,dt,.badge,button,summary,kbd,.eyebrow,.project-name,.hud-title,.dock-item b,.ow-title b{font-family:var(--display);letter-spacing:.02em}
+h1{font-size:26px;font-weight:700;margin:0;letter-spacing:.03em}
+h2{font-size:21px;font-weight:600;color:var(--cream)}
+h3{font-size:18px;font-weight:600;color:var(--cream)}
+p{line-height:1.25}
+.small{font-size:18px}.muted{color:var(--muted)}
+pre,code,kbd,.event time,time{font-family:var(--body)}
+
+/* Scrollbars as chunky pixel tracks. */
+*{scrollbar-width:auto;scrollbar-color:var(--wood) var(--well)}
+::-webkit-scrollbar{width:12px;height:12px}::-webkit-scrollbar-track{background:var(--well)}
+::-webkit-scrollbar-thumb{background:var(--wood);box-shadow:inset 0 0 0 3px var(--well),inset 6px 6px 0 -3px var(--wood-hi)}
+
+/* ---- Frames: panels, cards, windows, dialogs ---------------------------------------------- */
+.panel,.card,.stat,.notice,.inbox-item,.ow,.app-window,dialog,.hud-title,.hud-actions,.office-dock,.hotbar,.hud-message,#office-tooltip,.ctx-files,.palette-box,.connection-card{
+  clip-path:var(--notch);border:0!important;box-shadow:var(--frame)!important;background:var(--panel)}
+.panel,.card{background:var(--panel)}
+.panel-head{border-bottom:var(--px) solid var(--ink);background:var(--wall)}
+.notice{background:#3a3220;color:var(--gold-hi);padding:12px 16px}
+.notice.danger,.danger{color:#ffb0a3}
+.empty{color:var(--muted)}
+
+/* ---- Buttons ------------------------------------------------------------------------------ */
+button{font-size:17px;font-weight:600;color:var(--cream);background:#2f4459;border:0;padding:9px 14px 11px;clip-path:var(--notch);
+  box-shadow:inset 0 0 0 var(--px) var(--ink),inset 0 calc(var(--px)*-2) 0 calc(var(--px)*-1) #1a2734,inset calc(var(--px)*2) calc(var(--px)*2) 0 calc(var(--px)*-1) #4f6a85;transition:none}
+button:hover{background:#3a5470}
+button:active{transform:translateY(2px);box-shadow:inset 0 0 0 var(--px) var(--ink),inset calc(var(--px)*2) calc(var(--px)*2) 0 calc(var(--px)*-1) #1a2734}
+button:focus-visible{outline:none;box-shadow:inset 0 0 0 var(--px) var(--gold-hi),inset 0 0 0 calc(var(--px)*2) var(--ink)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.primary{background:var(--gold);color:var(--ink);box-shadow:inset 0 0 0 var(--px) var(--ink),inset 0 calc(var(--px)*-2) 0 calc(var(--px)*-1) var(--gold-lo),inset calc(var(--px)*2) calc(var(--px)*2) 0 calc(var(--px)*-1) var(--gold-hi)}
+.primary:hover{background:var(--gold-hi)}
+.quiet{background:transparent;box-shadow:inset 0 0 0 var(--px) var(--hi)}
+.quiet:hover{background:#26384a}
+kbd{font-size:13px;color:var(--muted);background:var(--well);padding:0 4px;margin-left:6px;box-shadow:inset 0 0 0 2px var(--hi)}
+
+/* ---- Fields ------------------------------------------------------------------------------- */
+label{font-family:var(--display);font-size:16px;color:var(--gold);margin:16px 0 6px}
+input,textarea,select{font-family:var(--body);font-size:20px;color:var(--cream);background:var(--well);border:0;padding:8px 10px;clip-path:var(--notch);
+  box-shadow:inset 0 0 0 var(--px) var(--ink),inset var(--px) var(--px) 0 var(--px) #070c11}
+input:focus,textarea:focus,select:focus{outline:none;box-shadow:inset 0 0 0 var(--px) var(--gold),inset var(--px) var(--px) 0 var(--px) #070c11}
+::placeholder{color:#6f7d88}
+
+/* ---- Badges and status -------------------------------------------------------------------- */
+.badge{font-size:14px;padding:3px 8px 4px;border:0;color:#cfe9c7;background:#24402e;clip-path:var(--notch);box-shadow:inset 0 0 0 2px #0b1a10}
+.badge.demo{color:var(--gold-hi);background:#4a3a1c;box-shadow:inset 0 0 0 2px #1d1407}
+.progress{height:12px;background:var(--well);box-shadow:inset 0 0 0 var(--px) var(--ink)}
+.progress div{background:repeating-linear-gradient(90deg,var(--green) 0 9px,#5ea852 9px 12px)}
+.avatar{background:var(--wall);color:var(--gold);font-family:var(--display);box-shadow:inset 0 0 0 var(--px) var(--ink)}
+.event-dot{background:var(--gold);width:8px;height:8px}
+.event,.task{border-bottom:var(--px) solid #142029}
+
+/* ---- Dialog (modal) ----------------------------------------------------------------------- */
+dialog{background:var(--panel);color:var(--text);padding:26px 28px}
+dialog::backdrop{background:#05090dcc;backdrop-filter:none}
+dialog h2{font-size:24px;color:var(--gold);margin-top:0}
+pre,.artifact-body{font:20px/1.2 var(--body);background:var(--well)!important;border:0!important;box-shadow:inset 0 0 0 var(--px) var(--ink);clip-path:var(--notch)}
+
+/* ---- The whole app is the office ---------------------------------------------------------- */
+.shell{display:block;position:fixed;inset:0;min-height:0}
+.shell .main{position:absolute;inset:0;padding:0}
+.office-full{height:100vh;min-height:0;border:0;background:var(--ink)}
+.hud-top{top:10px;left:12px;right:12px}
+.hud-title{gap:10px;align-items:center;padding:8px 14px 8px 12px}
+.hud-title .brand-symbol{height:26px}.hud-title .brand-wordmark{height:14px}
+.hud-title span{font-family:var(--body);font-size:18px;color:var(--muted)}
+.hud-actions{padding:7px;gap:6px;background:var(--panel)}
+.hud-actions button{font-size:15px;padding:6px 10px 8px}
+.hud-actions .pi{margin-right:6px}
+.hud-sep{width:var(--px);background:var(--ink);margin:2px}
+.hud-message{bottom:96px;font-size:18px;color:var(--cream);background:var(--panel);padding:6px 14px}
+#office-tooltip{font-size:17px;color:var(--cream);background:var(--panel);padding:4px 10px}
+
+/* Teammates: the party, bottom left. */
+.office-full .office-dock{left:12px;right:auto;bottom:10px;margin:0;max-width:calc(100% - 24px);background:var(--panel);padding:6px}
+.dock-item{background:transparent;box-shadow:none;padding:4px 8px 4px 4px}
+.dock-item:hover,.dock-item.open{background:#2b3e52;box-shadow:inset 0 0 0 var(--px) var(--ink)}
+.dock-item b{font-size:15px}.dock-item small{display:none}
+.dock-dot{width:8px;height:8px}
+
+/* Hotbar: the rest of Ruang, bottom right. Keys 1-8. */
+.hotbar{position:fixed;right:12px;bottom:10px;z-index:30;display:flex;gap:4px;padding:6px;background:var(--panel)}
+.hotbar button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;padding:7px 6px 6px;font-size:13px;background:#26384b}
+.hotbar button.active{background:#4a3a1c;color:var(--gold-hi);box-shadow:inset 0 0 0 var(--px) var(--gold),inset 0 0 0 calc(var(--px)*2) var(--ink)}
+.hotbar .pi{width:24px;height:24px}
+.hotbar kbd{position:absolute;top:2px;left:4px;margin:0;padding:0 2px;font-size:12px;background:none;box-shadow:none;color:#7f8d97}
+.hotbar .nav-count{position:absolute;top:-2px;right:-2px;min-width:20px;padding:0 4px;font:14px/18px var(--display);color:var(--ink);background:var(--red);box-shadow:inset 0 0 0 2px var(--ink);clip-path:var(--notch)}
+.pi{display:inline-block;width:24px;height:24px;vertical-align:middle;background-size:100% 100%;background-repeat:no-repeat;flex-shrink:0}
+
+/* App windows open over the office. */
+.app-layer{position:fixed;inset:64px 16px 94px;z-index:20;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.app-layer:empty{display:none}
+.app-window{pointer-events:auto;display:flex;flex-direction:column;width:min(1000px,100%);max-height:100%;background:var(--panel)}
+.app-window.view-code{width:100%;height:100%}
+.aw-head{display:flex;align-items:center;gap:12px;margin:0;padding:10px 12px 10px 16px;background:var(--wall);box-shadow:inset 0 calc(var(--px)*-1) 0 var(--ink)}
+.aw-head h1{flex:1;color:var(--gold)}
+.aw-head .top-actions .badge{font-size:13px}
+.aw-close{padding:4px 10px 6px;font-size:16px;background:#5a2a26}
+.aw-close:hover{background:#7a3631}
+.aw-body{overflow:auto;padding:20px 22px 24px;min-height:0;flex:1}
+.view-code .aw-body{padding:10px;display:flex;flex-direction:column}
+.shell.has-window .office-dock,.shell.has-window .hud-message{filter:brightness(.7)}
+
+/* Floating employee windows use the same frame. */
+.ow{background:var(--panel);font-size:18px;width:300px}
+.ow-actions button{font-size:15px;padding:7px 8px 9px}
+.ow-tail{background:var(--panel);border-color:var(--ink)}
+.ow-title b{font-size:17px}.ow-title small{font-family:var(--body);font-size:16px}
+.ow-tabs button{font-size:14px;padding:5px 4px 7px}
+.ow-tabs button[aria-pressed="true"]{background:#4a3a1c;color:var(--gold-hi)}
+.ow-info dl{font-size:17px;grid-template-columns:86px 1fr}
+.ow-info dt{font-size:14px;color:var(--gold)}
+.ow-icon{box-shadow:none;background:transparent;padding:2px 6px;font-size:16px}
+.ow-approval{background:#3a3220;clip-path:var(--notch);border:0;box-shadow:inset 0 0 0 var(--px) var(--gold)}
+.ow-log{font-size:17px}.ow-log li{grid-template-columns:56px 1fr}
+.ow-msgs p{font-size:18px;clip-path:var(--notch)}
+.ow-cancel{font-size:15px;background:#5a2a26;color:#ffd9d2}
+
+/* Inbox, tasks and lists. */
+.inbox-item{background:var(--panel);padding:14px 16px}
+.inbox-item.prominent{box-shadow:inset 0 0 0 var(--px) var(--gold),var(--frame)!important}
+.inbox-item h3{font-size:19px}
+.grid{gap:14px}.card{padding:18px}
+.run-facts{font-size:18px}.run-facts dt{font-size:14px;color:var(--gold)}
+.run-list,.ctx-list{font-size:18px}
+.ctx-list li{background:var(--well);clip-path:var(--notch)}
+
+/* Code editor keeps Monaco's own measuring; the font is set in its options. */
+.monaco-editor,.monaco-editor *{font-size-adjust:none}
+
+@media(max-width:1180px){
+  .hotbar .nav-label{display:none}.hotbar button{min-width:44px}
+  .dock-item span{display:none}
+}
+@media(max-width:760px){
+  .hotbar{left:8px;right:8px;bottom:8px;gap:2px;padding:4px}.hotbar button{flex:1;min-width:0;padding:6px 2px}
+  .shell.has-window #office-windows{display:none}
+  .office-full .office-dock{bottom:76px;left:8px}
+  .hud-message{bottom:150px}
+  .app-layer{inset:58px 8px 74px}
+  .hud-title span,.hud-title .brand-wordmark{display:none}
+  .hud-actions{flex-wrap:nowrap;max-width:none}.hud-actions button{font-size:13px;padding:5px 8px 7px}
+  .hud-actions [data-office="zoom"],.hud-actions [data-office="roam"],.hud-actions kbd,.hud-sep{display:none}
+}
+@media(prefers-reduced-motion:reduce){button:active{transform:none}}

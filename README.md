@@ -1,4 +1,4 @@
-# Ruang 0.14
+# Ruang 0.14.1
 
 Ruang is a local AI workspace with a walking pixel office. You give tasks to AI employees; each employee keeps
 its identity while the model behind it can change. The office shows the real state of their work.
@@ -7,6 +7,10 @@ Open **Start Ruang.cmd** (runs the packaged build in `release/`, or `npm start` 
 
 ## What works
 
+- **The office is the app**: the pixel office always fills the screen. Inbox, Team, Projects, Tasks, Code, Files,
+  Activity and Settings open as pixel windows over it, from the hotbar (keys 1-8) or from places in the room:
+  reception opens the Inbox, the meeting-room board Tasks, the whiteboard Projects, the bookshelf Files, the
+  development desk Code, the meeting table the Team and the coffee machine Activity. Esc returns to the office.
 - **Tasks run on a real model** through the RUANG AI harness: assign a task in the office, watch the employee
   read, think and write, and review the saved output in the Inbox. Cancel, Try again and restart recovery are
   supported. See [docs/HARNESS.md](docs/HARNESS.md).
@@ -29,6 +33,10 @@ Structured tools are used with Anthropic. OpenAI and Gemini receive the approved
 The installed app keeps its data in `release/AI Office/data` when that folder exists, otherwise beside the
 executable (`data/` in development): workspace state, encrypted keys (`ai-connections`), outputs (`artifacts`)
 and run records (`runs`).
+
+## Fonts
+
+Pixelify Sans and VT323 are bundled in `dist/fonts` under the SIL Open Font License (licence files alongside).
 
 ## Development
 

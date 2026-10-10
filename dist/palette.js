@@ -3,7 +3,7 @@
 (() => {
   let open=false,query='',active=0,results=[],returnFocus=null;
   const norm=s=>String(s||'').toLowerCase();
-  const go=v=>{view=v;render()};
+  const go=v=>{$('#dialog').close();v==='Office'?(view='Office',render()):openView(v)};
   const agentName=id=>state.agents.find(a=>a.id===id)?.name||'Unassigned';
 
   function sources(){

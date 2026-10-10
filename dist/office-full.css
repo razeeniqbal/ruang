@@ -3,15 +3,6 @@
 .brand-symbol{height:30px;width:auto}
 .brand-wordmark{height:15px;width:auto}
 
-/* On the office page the sidebar collapses to icons so the space can use the whole window. */
-.shell.office-mode{grid-template-columns:68px minmax(0,1fr)}
-.shell.office-mode .sidebar{padding:18px 8px;align-items:center}
-.shell.office-mode .brand-wordmark,.shell.office-mode .tagline{display:none}
-.shell.office-mode .brand{margin-bottom:26px}
-.shell.office-mode .nav button{font-size:0;gap:0;padding:12px;justify-content:center}
-.shell.office-mode .nav-icon{font-size:17px;width:auto}
-.shell.office-mode .owner>:not(.avatar){display:none}
-.shell.office-mode .main{padding:10px}
 
 .office-full{position:relative;height:calc(100vh - 20px);min-height:480px;border-radius:12px;overflow:hidden;background:#0c141b;border:1px solid #26333f}
 .office-full .office-viewport{position:absolute;inset:0;max-height:none;padding:0;background:transparent}

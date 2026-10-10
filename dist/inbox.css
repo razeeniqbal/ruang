@@ -1,7 +1,5 @@
 /* Inbox page, navigation count, and the approval and activity blocks inside employee windows. */
 .nav-count{margin-left:auto;min-width:20px;padding:1px 6px;border-radius:10px;background:#e2bf7e;color:#182632;font-size:11px;font-weight:700;line-height:18px;text-align:center}
-.shell.office-mode .nav-count{position:absolute;margin:0;transform:translate(14px,-12px);font-size:10px;min-width:16px;line-height:15px;padding:0 4px}
-.shell.office-mode .nav button{position:relative}
 
 .inbox-lead{margin:0 0 18px;max-width:640px}
 .inbox-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;max-width:860px}
